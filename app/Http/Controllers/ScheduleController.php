@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Schedule;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class ScheduleController extends Controller
 {
@@ -31,7 +30,7 @@ class ScheduleController extends Controller
                         return [
                             'enrollment_id' => $enrollment->id,
                             'trainee_id' => $enrollment->traineeid,
-                            'trainee_name' => $enrollment->trainee ? $enrollment->trainee->name ?? 'N/A' : 'N/A',
+                            'trainee_name' => $enrollment->trainee ? $enrollment->trainee->l_name ?? 'N/A' : 'N/A',
                             'date_registered' => $enrollment->dateregistered,
                             'status' => $enrollment->pendingid
                         ];
