@@ -16,4 +16,50 @@ class Schedule extends Model
         'startdateformat',
         'enddateformat'
     ];
+
+    public function course()
+    {
+        return $this->belongsTo(Course::class, 'courseid', 'courseid');
+    }
+
+    public function enrollments()
+    {
+        return $this->hasMany(Enrolled::class, 'scheduleid', 'scheduleid');
+    }
+
+    public function activeEnrollments()
+    {
+        return $this->hasMany(Enrolled::class, 'scheduleid', 'scheduleid')
+            ->where('pendingid', 0);
+    }
+
+    public function getEnrolledCountAttribute()
+    {
+        return $this->enrollments()->count();
+    }
+
+    public function getActiveEnrolledCountAttribute()
+    {
+        return $this->activeEnrollments()->count();
+    }
+
+    public function countEnrolledStudents()
+    {
+        return $this->enrollments()->count();
+    }
+
+    public function countActiveEnrolledStudents()
+    {
+        return $this->activeEnrollments()->count();
+    }
+
+    public function getEnrolledStudents()
+    {
+        return $this->enrollments()->with('trainee')->get();
+    }
+
+    public function getActiveEnrolledStudents()
+    {
+        return $this->activeEnrollments()->with('trainee')->get();
+    }
 }

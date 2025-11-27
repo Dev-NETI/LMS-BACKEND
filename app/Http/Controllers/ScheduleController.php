@@ -10,25 +10,81 @@ class ScheduleController extends Controller
 {
     public function getCourseScheduleById(Request $request)
     {
-        $schedules = Schedule::where('deletedid', 0)->where('courseid', $request->id)
-            ->get();
+        try {
+            $schedules = Schedule::with(['course', 'activeEnrollments.trainee'])
+                ->where('deletedid', 0)
+                ->where('courseid', $request->id)
+                ->get();
 
-        return response()->json([
-            'success' => true,
-            'data' => $schedules,
-            'message' => 'Schedules retrieved successfully'
-        ], 200);
+            // Transform the data to include enrollment counts
+            $schedulesWithEnrollment = $schedules->map(function ($schedule) {
+                return [
+                    'scheduleid' => $schedule->scheduleid,
+                    'batchno' => $schedule->batchno,
+                    'startdateformat' => $schedule->startdateformat,
+                    'enddateformat' => $schedule->enddateformat,
+                    'courseid' => $schedule->courseid,
+                    'course' => $schedule->course,
+                    'total_enrolled' => $schedule->countEnrolledStudents(),
+                    'active_enrolled' => $schedule->countActiveEnrolledStudents(),
+                    'enrolled_students' => $schedule->activeEnrollments->map(function ($enrollment) {
+                        return [
+                            'enrollment_id' => $enrollment->id,
+                            'trainee_id' => $enrollment->traineeid,
+                            'trainee_name' => $enrollment->trainee ? $enrollment->trainee->name ?? 'N/A' : 'N/A',
+                            'date_registered' => $enrollment->dateregistered,
+                            'status' => $enrollment->pendingid
+                        ];
+                    })
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $schedulesWithEnrollment,
+                'message' => 'Schedules with enrollment data retrieved successfully'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve schedules',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function getAllSchedules(Request $request)
     {
-        $schedules = Schedule::where('deletedid', 0)
-            ->get();
+        try {
+            $schedules = Schedule::with(['course', 'activeEnrollments'])
+                ->where('deletedid', 0)
+                ->get();
 
-        return response()->json([
-            'success' => true,
-            'data' => $schedules,
-            'message' => 'All schedules retrieved successfully'
-        ], 200);
+            // Transform the data to include enrollment counts
+            $schedulesWithEnrollment = $schedules->map(function ($schedule) {
+                return [
+                    'scheduleid' => $schedule->scheduleid,
+                    'batchno' => $schedule->batchno,
+                    'startdateformat' => $schedule->startdateformat,
+                    'enddateformat' => $schedule->enddateformat,
+                    'courseid' => $schedule->courseid,
+                    'course' => $schedule->course,
+                    'total_enrolled' => $schedule->countEnrolledStudents(),
+                    'active_enrolled' => $schedule->countActiveEnrolledStudents()
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $schedulesWithEnrollment,
+                'message' => 'All schedules with enrollment data retrieved successfully'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve schedules',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

@@ -19,4 +19,9 @@ class Course extends Model
         'courseimage',
         'coursestatus'
     ];
+
+    public function schedule()
+    {
+        return $this->hasMany(Schedule::class, 'courseid', 'courseid');
+    }
 }
