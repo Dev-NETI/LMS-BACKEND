@@ -32,7 +32,7 @@ class ScheduleController extends Controller
                             'trainee_id' => $enrollment->traineeid,
                             'trainee_name' => $enrollment->trainee ? $enrollment->trainee->l_name ?? 'N/A' : 'N/A',
                             'date_registered' => $enrollment->dateregistered,
-                            'status' => $enrollment->pendingid
+                            'status' => $enrollment->pendingid === 0 ? 'Enrolled' : 'Pending'
                         ];
                     })
                 ];
@@ -71,13 +71,17 @@ class ScheduleController extends Controller
                     'course' => $schedule->course,
                     'total_enrolled' => $schedule->countEnrolledStudents(),
                     'active_enrolled' => $schedule->countActiveEnrolledStudents(),
-                    'enrolled_students' => $schedule->activeEnrollments->map(function ($enrollment) {
+                    'enrolled_students' => $schedule->enrollments->map(function ($enrollment) {
                         return [
-                            'enrollment_id' => $enrollment->id,
+                            'enrollment_id' => $enrollment->enroledid,
                             'trainee_id' => $enrollment->traineeid,
-                            'trainee_name' => $enrollment->trainee ? $enrollment->trainee->l_name ?? 'N/A' : 'N/A',
-                            'date_registered' => $enrollment->dateregistered,
-                            'status' => $enrollment->pendingid
+                            'trainee_name' => $enrollment->trainee->formatName(),
+                            'date_confirmed' => $enrollment->dateconfirmed,
+                            'status' => $enrollment->pendingid === 0 ? 'Enrolled' : 'Pending',
+                            'email' => $enrollment->trainee->email,
+                            'contact_num' => $enrollment->trainee->formatContactNumber(),
+                            'rank' => $enrollment->trainee->rank->rank,
+                            'rankacronym' => $enrollment->trainee->rank->rankacronym
                         ];
                     })
                 ];

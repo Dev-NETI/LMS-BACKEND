@@ -8,7 +8,7 @@ class Enrolled extends Model
 {
     protected $connection = 'main_db';
     protected $table = 'tblenroled';
-    protected $primaryKey = 'id';
+    protected $primaryKey = 'enroledid';
     public $timestamps = false;
 
     protected $fillable = [
