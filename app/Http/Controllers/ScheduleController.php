@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 
 class ScheduleController extends Controller
 {
-    public function getCourseScheduleById(Request $request)
+    public function getCourseScheduleByCourseId(Request $request)
     {
         try {
             $schedules = Schedule::with(['course', 'activeEnrollments.trainee'])
@@ -52,11 +52,12 @@ class ScheduleController extends Controller
         }
     }
 
-    public function getAllSchedules(Request $request)
+    public function getCourseScheduleById(Request $request)
     {
         try {
-            $schedules = Schedule::with(['course', 'activeEnrollments'])
+            $schedules = Schedule::with(['course', 'activeEnrollments.trainee'])
                 ->where('deletedid', 0)
+                ->where('scheduleid', $request->id)
                 ->get();
 
             // Transform the data to include enrollment counts
@@ -69,14 +70,23 @@ class ScheduleController extends Controller
                     'courseid' => $schedule->courseid,
                     'course' => $schedule->course,
                     'total_enrolled' => $schedule->countEnrolledStudents(),
-                    'active_enrolled' => $schedule->countActiveEnrolledStudents()
+                    'active_enrolled' => $schedule->countActiveEnrolledStudents(),
+                    'enrolled_students' => $schedule->activeEnrollments->map(function ($enrollment) {
+                        return [
+                            'enrollment_id' => $enrollment->id,
+                            'trainee_id' => $enrollment->traineeid,
+                            'trainee_name' => $enrollment->trainee ? $enrollment->trainee->l_name ?? 'N/A' : 'N/A',
+                            'date_registered' => $enrollment->dateregistered,
+                            'status' => $enrollment->pendingid
+                        ];
+                    })
                 ];
             });
 
             return response()->json([
                 'success' => true,
                 'data' => $schedulesWithEnrollment,
-                'message' => 'All schedules with enrollment data retrieved successfully'
+                'message' => 'Schedules with enrollment data retrieved successfully'
             ], 200);
         } catch (\Exception $e) {
             return response()->json([

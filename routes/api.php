@@ -27,8 +27,8 @@ Route::prefix('admin')->group(function () {
         Route::get('/enrolled-courses', [CourseController::class, 'getEnrolledCourses'])->name('admin.enrolled-courses');
         Route::get('/courses', [CourseController::class, 'index']);
         Route::get('/courses/{id}', [CourseController::class, 'show']);
-        Route::get('/courses-schedule/{id}', [ScheduleController::class, 'getCourseScheduleById']);
-        Route::get('/courses-schedule', [ScheduleController::class, 'getAllSchedules']);
+        Route::get('/courses-schedule/{id}', [ScheduleController::class, 'getCourseScheduleByCourseId']);
+        Route::get('/courses/schedules/{id}', [ScheduleController::class, 'getCourseScheduleById']);
     });
 });
 
