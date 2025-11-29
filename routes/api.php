@@ -9,6 +9,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AnnouncementReplyController;
 use App\Http\Controllers\CourseDetailController;
+use App\Http\Controllers\TrainingMaterialController;
 
 // SPA Authentication (session-based) - for frontend
 Route::prefix('trainee')->group(function () {
@@ -55,6 +56,11 @@ Route::prefix('admin')->group(function () {
         Route::apiResource('course-details', CourseDetailController::class);
         Route::get('/courses/{courseId}/details', [CourseDetailController::class, 'getByCourse']);
         Route::post('/course-details/reorder', [CourseDetailController::class, 'reorder']);
+
+        // Training Materials routes
+        Route::apiResource('training-materials', TrainingMaterialController::class);
+        Route::get('/courses/{courseId}/training-materials', [TrainingMaterialController::class, 'getByCourse']);
+        Route::get('/training-materials/{trainingMaterial}/download', [TrainingMaterialController::class, 'download']);
     });
 });
 
