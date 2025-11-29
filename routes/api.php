@@ -8,6 +8,7 @@ use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AnnouncementReplyController;
+use App\Http\Controllers\CourseDetailController;
 
 // SPA Authentication (session-based) - for frontend
 Route::prefix('trainee')->group(function () {
@@ -49,6 +50,11 @@ Route::prefix('admin')->group(function () {
         Route::put('/replies/{reply}', [AnnouncementReplyController::class, 'update']);
         Route::delete('/replies/{reply}', [AnnouncementReplyController::class, 'destroy']);
         Route::patch('/replies/{reply}/toggle-active', [AnnouncementReplyController::class, 'toggleActive']);
+
+        // Course Details routes
+        Route::apiResource('course-details', CourseDetailController::class);
+        Route::get('/courses/{courseId}/details', [CourseDetailController::class, 'getByCourse']);
+        Route::post('/course-details/reorder', [CourseDetailController::class, 'reorder']);
     });
 });
 
