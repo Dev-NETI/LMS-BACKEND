@@ -42,11 +42,19 @@ class AnnouncementController extends Controller
             'published_at' => 'nullable|date'
         ]);
 
-        $validated['created_by_user_id'] = Auth::user()->user_id;
+        $validated['created_by_user_id'] = Auth::id();
+        $validated['user_type'] = 'admin';  // Since this is admin controller
         $validated['published_at'] = $validated['published_at'] ?? now();
 
         $announcement = Announcement::create($validated);
-        $announcement->load(['schedule', 'createdByUser']);
+        $announcement->load(['schedule']);
+
+        // Load the correct user relationship based on user_type
+        if ($announcement->user_type === 'admin') {
+            $announcement->load('createdByUser');
+        } else {
+            $announcement->load('createdByTrainee');
+        }
 
         return response()->json([
             'message' => 'Announcement created successfully',
@@ -96,7 +104,7 @@ class AnnouncementController extends Controller
         }
 
         $announcements = Announcement::where('schedule_id', $request->sched_id)
-            ->with('createdByUser')
+            ->with(['createdByUser', 'createdByTrainee'])
             ->withCount('replies')
             ->orderBy('published_at', 'desc')
             ->get();

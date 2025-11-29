@@ -12,7 +12,7 @@ class AnnouncementReplyController extends Controller
     public function index(Request $request, $announcementId): JsonResponse
     {
         $announcement = Announcement::findOrFail($announcementId);
-        
+
         $query = AnnouncementReply::forAnnouncement($announcementId)
             ->with('user');
 
@@ -21,7 +21,7 @@ class AnnouncementReplyController extends Controller
         }
 
         $replies = $query->orderBy('created_at', 'asc')
-                        ->paginate($request->get('per_page', 20));
+            ->paginate($request->get('per_page', 20));
 
         return response()->json([
             'announcement' => $announcement,
@@ -32,7 +32,7 @@ class AnnouncementReplyController extends Controller
     public function store(Request $request, $announcementId): JsonResponse
     {
         $announcement = Announcement::findOrFail($announcementId);
-        
+
         if (!$announcement->is_active) {
             return response()->json(['message' => 'Cannot reply to inactive announcement'], 422);
         }
@@ -44,6 +44,7 @@ class AnnouncementReplyController extends Controller
         $reply = AnnouncementReply::create([
             'announcement_id' => $announcementId,
             'user_id' => auth()->id(),
+            'user_type' => 'admin',  // Since this is admin controller  
             'content' => $validated['content']
         ]);
 

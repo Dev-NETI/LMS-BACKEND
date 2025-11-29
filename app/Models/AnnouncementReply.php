@@ -9,6 +9,7 @@ class AnnouncementReply extends Model
     protected $fillable = [
         'announcement_id',
         'user_id',
+        'user_type',
         'content',
         'is_active'
     ];
@@ -27,6 +28,27 @@ class AnnouncementReply extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id', 'id');
+    }
+
+    public function traineeUser()
+    {
+        return $this->belongsTo(Trainee::class, 'user_id', 'traineeid');
+    }
+
+    public function getUserAttribute()
+    {
+        if ($this->user_type === 'admin') {
+            $user = $this->getRelationValue('user');
+        } else {
+            $user = $this->getRelationValue('traineeUser');
+        }
+
+        if ($user) {
+            $userData = $user->toArray();
+            $userData['user_type'] = $this->user_type;
+            return $userData;
+        }
+        return null;
     }
 
     public function scopeActive($query)
