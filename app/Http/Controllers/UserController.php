@@ -19,7 +19,7 @@ class UserController extends Controller
         $user = User::where('email', $credentials['email'])->first();
 
         if ($user && Hash::check($credentials['password'], $user->password)) {
-            $token = $user->createToken('admin-auth-token')->plainTextToken;
+            $token = $user->createToken('admin-auth-token', ['*'], now()->addDays(7))->plainTextToken;
 
             return response()->json([
                 'success' => true,
