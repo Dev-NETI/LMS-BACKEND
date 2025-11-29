@@ -27,8 +27,9 @@ class UserController extends Controller
                 'token' => $token,
                 'user' => [
                     'id' => $user->id,
-                    'name' => $user->name,
                     'email' => $user->email,
+                    'f_name' => $user->f_name,
+                    'l_name' => $user->l_name,
                 ]
             ], 200);
         }
@@ -57,8 +58,9 @@ class UserController extends Controller
             'success' => true,
             'user' => [
                 'id' => $user->id,
-                'name' => $user->name,
                 'email' => $user->email,
+                'f_name' => $user->f_name,
+                'l_name' => $user->l_name,
             ]
         ], 200);
     }

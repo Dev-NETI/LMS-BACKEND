@@ -6,6 +6,8 @@ use App\Http\Controllers\TraineeAuthController;
 use App\Http\Controllers\CourseController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\AnnouncementController;
+use App\Http\Controllers\AnnouncementReplyController;
 
 // SPA Authentication (session-based) - for frontend
 Route::prefix('trainee')->group(function () {
@@ -15,6 +17,13 @@ Route::prefix('trainee')->group(function () {
         Route::post('/logout', [TraineeAuthController::class, 'logout'])->name('trainee.logout');
         Route::get('/me', [TraineeAuthController::class, 'me'])->name('trainee.me');
         Route::get('/enrolled-courses', [CourseController::class, 'getEnrolledCourses'])->name('trainee.enrolled-courses');
+        Route::get('/schedules/{scheduleId}/announcements', [AnnouncementController::class, 'getBySchedule']);
+
+        Route::get('/announcements/{announcementId}/replies', [AnnouncementReplyController::class, 'index']);
+        Route::post('/announcements/{announcementId}/replies', [AnnouncementReplyController::class, 'store']);
+        Route::get('/replies/{reply}', [AnnouncementReplyController::class, 'show']);
+        Route::put('/replies/{reply}', [AnnouncementReplyController::class, 'update']);
+        Route::delete('/replies/{reply}', [AnnouncementReplyController::class, 'destroy']);
     });
 });
 
@@ -29,6 +38,17 @@ Route::prefix('admin')->group(function () {
         Route::get('/courses/{id}', [CourseController::class, 'show']);
         Route::get('/courses-schedule/{id}', [ScheduleController::class, 'getCourseScheduleByCourseId']);
         Route::get('/courses/schedules/{id}', [ScheduleController::class, 'getCourseScheduleById']);
+
+        Route::apiResource('announcements', AnnouncementController::class);
+        Route::get('/schedules/{sched_id}/announcements', [AnnouncementController::class, 'getBySchedule']);
+        Route::patch('/announcements/{announcement}/toggle-active', [AnnouncementController::class, 'toggleActive']);
+
+        Route::get('/announcements/{announcementId}/replies', [AnnouncementReplyController::class, 'index']);
+        Route::post('/announcements/{announcementId}/replies', [AnnouncementReplyController::class, 'store']);
+        Route::get('/replies/{reply}', [AnnouncementReplyController::class, 'show']);
+        Route::put('/replies/{reply}', [AnnouncementReplyController::class, 'update']);
+        Route::delete('/replies/{reply}', [AnnouncementReplyController::class, 'destroy']);
+        Route::patch('/replies/{reply}/toggle-active', [AnnouncementReplyController::class, 'toggleActive']);
     });
 });
 

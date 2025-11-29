@@ -62,4 +62,17 @@ class Schedule extends Model
     {
         return $this->activeEnrollments()->with('trainee')->get();
     }
+
+    public function announcements()
+    {
+        return $this->hasMany(Announcement::class, 'schedule_id', 'scheduleid');
+    }
+
+    public function activeAnnouncements()
+    {
+        return $this->hasMany(Announcement::class, 'schedule_id', 'scheduleid')
+            ->active()
+            ->published()
+            ->orderBy('published_at', 'desc');
+    }
 }
