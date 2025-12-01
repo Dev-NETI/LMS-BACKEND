@@ -60,7 +60,8 @@ Route::prefix('admin')->group(function () {
         // Training Materials routes
         Route::apiResource('training-materials', TrainingMaterialController::class);
         Route::get('/courses/{courseId}/training-materials', [TrainingMaterialController::class, 'getByCourse']);
-        Route::get('/training-materials/{trainingMaterial}/download', [TrainingMaterialController::class, 'download']);
+        Route::get('/training-materials/{trainingMaterial}/download', [TrainingMaterialController::class, 'download'])->middleware('secure.file');
+        Route::get('/training-materials/{trainingMaterial}/view', [TrainingMaterialController::class, 'view'])->middleware('secure.file');
     });
 });
 
