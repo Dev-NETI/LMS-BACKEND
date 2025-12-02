@@ -11,6 +11,7 @@ use App\Http\Controllers\AnnouncementReplyController;
 use App\Http\Controllers\CourseDetailController;
 use App\Http\Controllers\TrainingMaterialController;
 use App\Http\Controllers\CourseContentController;
+use App\Http\Controllers\TraineeProgressController;
 
 // SPA Authentication (session-based) - for frontend
 Route::prefix('trainee')->group(function () {
@@ -32,6 +33,12 @@ Route::prefix('trainee')->group(function () {
         Route::get('/course-content/{courseContent}', [CourseContentController::class, 'show']);
         Route::get('/course-content/{courseContent}/download', [CourseContentController::class, 'download'])->middleware('secure.file');
         Route::get('/course-content/{courseContent}/view', [CourseContentController::class, 'view'])->middleware('secure.file');
+
+        // Progress tracking routes for trainees
+        Route::get('/courses/{courseId}/progress', [TraineeProgressController::class, 'getCourseProgress']);
+        Route::post('/progress/start', [TraineeProgressController::class, 'markAsStarted']);
+        Route::post('/progress/complete', [TraineeProgressController::class, 'markAsCompleted']);
+        Route::post('/progress/update', [TraineeProgressController::class, 'updateProgress']);
     });
 });
 
@@ -74,6 +81,14 @@ Route::prefix('admin')->group(function () {
         Route::get('/courses/{courseId}/content', [CourseContentController::class, 'getByCourse']);
         Route::get('/course-content/{courseContent}/download', [CourseContentController::class, 'download'])->middleware('secure.file');
         Route::get('/course-content/{courseContent}/view', [CourseContentController::class, 'view'])->middleware('secure.file');
+
+        // Progress monitoring routes for admins
+        Route::get('/progress/report', [TraineeProgressController::class, 'getProgressReport']);
+        Route::get('/courses/{courseId}/progress/trainees', [TraineeProgressController::class, 'getTraineeProgressByCourse']);
+        Route::get('/courses/{courseId}/progress/trainee/{traineeId}', [TraineeProgressController::class, 'getCourseProgress']);
+        Route::get('/schedules/{scheduleId}/progress', [TraineeProgressController::class, 'getTraineeProgressBySchedule']);
+        Route::get('/progress/{progressId}/activity-log', [TraineeProgressController::class, 'getActivityLog']);
+        Route::post('/progress/update', [TraineeProgressController::class, 'updateProgress']);
     });
 });
 
