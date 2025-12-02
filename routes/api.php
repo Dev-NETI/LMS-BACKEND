@@ -21,7 +21,7 @@ Route::prefix('trainee')->group(function () {
         Route::post('/logout', [TraineeAuthController::class, 'logout'])->name('trainee.logout');
         Route::get('/me', [TraineeAuthController::class, 'me'])->name('trainee.me');
         Route::get('/enrolled-courses', [CourseController::class, 'getEnrolledCourses'])->name('trainee.enrolled-courses');
-        Route::get('/schedules/{scheduleId}/announcements', [AnnouncementController::class, 'getBySchedule']);
+        Route::get('/schedules/{sched_id}/announcements', [AnnouncementController::class, 'getBySchedule']);
         Route::get('/announcements/{announcementId}/replies', [AnnouncementReplyController::class, 'index']);
         Route::post('/announcements/{announcementId}/replies', [AnnouncementReplyController::class, 'store']);
         Route::get('/replies/{reply}', [AnnouncementReplyController::class, 'show']);
@@ -33,6 +33,11 @@ Route::prefix('trainee')->group(function () {
         Route::get('/course-content/{courseContent}', [CourseContentController::class, 'show']);
         Route::get('/course-content/{courseContent}/download', [CourseContentController::class, 'download'])->middleware('secure.file');
         Route::get('/course-content/{courseContent}/view', [CourseContentController::class, 'view'])->middleware('secure.file');
+
+        // Training Materials routes for trainees (read-only access)
+        Route::get('/courses/{courseId}/training-materials', [TrainingMaterialController::class, 'getByCourse']);
+        Route::get('/training-materials/{trainingMaterial}/download', [TrainingMaterialController::class, 'download'])->middleware('secure.file');
+        Route::get('/training-materials/{trainingMaterial}/view', [TrainingMaterialController::class, 'view'])->middleware('secure.file');
 
         // Progress tracking routes for trainees
         Route::get('/courses/{courseId}/progress', [TraineeProgressController::class, 'getCourseProgress']);
