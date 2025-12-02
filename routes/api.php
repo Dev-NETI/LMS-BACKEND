@@ -10,6 +10,7 @@ use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AnnouncementReplyController;
 use App\Http\Controllers\CourseDetailController;
 use App\Http\Controllers\TrainingMaterialController;
+use App\Http\Controllers\CourseContentController;
 
 // SPA Authentication (session-based) - for frontend
 Route::prefix('trainee')->group(function () {
@@ -25,6 +26,12 @@ Route::prefix('trainee')->group(function () {
         Route::get('/replies/{reply}', [AnnouncementReplyController::class, 'show']);
         Route::put('/replies/{reply}', [AnnouncementReplyController::class, 'update']);
         Route::delete('/replies/{reply}', [AnnouncementReplyController::class, 'destroy']);
+
+        // Course Content routes for trainees (read-only access for self-pace learning)
+        Route::get('/courses/{courseId}/content', [CourseContentController::class, 'getByCourse']);
+        Route::get('/course-content/{courseContent}', [CourseContentController::class, 'show']);
+        Route::get('/course-content/{courseContent}/download', [CourseContentController::class, 'download'])->middleware('secure.file');
+        Route::get('/course-content/{courseContent}/view', [CourseContentController::class, 'view'])->middleware('secure.file');
     });
 });
 
@@ -61,6 +68,12 @@ Route::prefix('admin')->group(function () {
         Route::get('/courses/{courseId}/training-materials', [TrainingMaterialController::class, 'getByCourse']);
         Route::get('/training-materials/{trainingMaterial}/download', [TrainingMaterialController::class, 'download'])->middleware('secure.file');
         Route::get('/training-materials/{trainingMaterial}/view', [TrainingMaterialController::class, 'view'])->middleware('secure.file');
+
+        // Course Content routes (for self-pace learning)
+        Route::apiResource('course-content', CourseContentController::class);
+        Route::get('/courses/{courseId}/content', [CourseContentController::class, 'getByCourse']);
+        Route::get('/course-content/{courseContent}/download', [CourseContentController::class, 'download'])->middleware('secure.file');
+        Route::get('/course-content/{courseContent}/view', [CourseContentController::class, 'view'])->middleware('secure.file');
     });
 });
 
