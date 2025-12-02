@@ -62,7 +62,12 @@ class AnnouncementReplyController extends Controller
             'content' => $validated['content']
         ]);
 
-        $reply->load('user');
+        // Load the correct relationship based on user_type
+        if ($reply->user_type === 'admin') {
+            $reply->load('user');
+        } else {
+            $reply->load('traineeUser');
+        }
 
         return response()->json([
             'message' => 'Reply posted successfully',
@@ -87,7 +92,13 @@ class AnnouncementReplyController extends Controller
         ]);
 
         $reply->update($validated);
-        $reply->load('user');
+        
+        // Load the correct relationship based on user_type
+        if ($reply->user_type === 'admin') {
+            $reply->load('user');
+        } else {
+            $reply->load('traineeUser');
+        }
 
         return response()->json([
             'message' => 'Reply updated successfully',
