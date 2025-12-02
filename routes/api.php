@@ -20,7 +20,6 @@ Route::prefix('trainee')->group(function () {
         Route::get('/me', [TraineeAuthController::class, 'me'])->name('trainee.me');
         Route::get('/enrolled-courses', [CourseController::class, 'getEnrolledCourses'])->name('trainee.enrolled-courses');
         Route::get('/schedules/{scheduleId}/announcements', [AnnouncementController::class, 'getBySchedule']);
-
         Route::get('/announcements/{announcementId}/replies', [AnnouncementReplyController::class, 'index']);
         Route::post('/announcements/{announcementId}/replies', [AnnouncementReplyController::class, 'store']);
         Route::get('/replies/{reply}', [AnnouncementReplyController::class, 'show']);

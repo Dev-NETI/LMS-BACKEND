@@ -19,6 +19,10 @@ class TraineeAuthController extends Controller
         $trainee = Trainee::where('email', $credentials['email'])->first();
 
         if ($trainee && Hash::check($credentials['password'], $trainee->password)) {
+            // Delete any existing tokens for this user to prevent token accumulation
+            $trainee->tokens()->delete();
+            
+            // Create a new token
             $token = $trainee->createToken('trainee-auth-token')->plainTextToken;
 
             return response()->json([

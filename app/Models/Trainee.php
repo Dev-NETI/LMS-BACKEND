@@ -33,15 +33,6 @@ class Trainee extends Authenticatable
         'password' => 'hashed',
     ];
 
-    public function getAuthIdentifierName()
-    {
-        return 'email';
-    }
-
-    public function getAuthPassword()
-    {
-        return $this->password;
-    }
 
     public function rank()
     {
