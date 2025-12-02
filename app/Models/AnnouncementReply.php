@@ -35,22 +35,6 @@ class AnnouncementReply extends Model
         return $this->belongsTo(Trainee::class, 'user_id', 'traineeid');
     }
 
-    public function getUserAttribute()
-    {
-        if ($this->user_type === 'admin') {
-            $user = $this->getRelationValue('user');
-        } else {
-            $user = $this->getRelationValue('traineeUser');
-        }
-
-        if ($user) {
-            $userData = $user->toArray();
-            $userData['user_type'] = $this->user_type;
-            return $userData;
-        }
-        return null;
-    }
-
     public function scopeActive($query)
     {
         return $query->where('is_active', true);

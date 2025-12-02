@@ -13,19 +13,33 @@ class AnnouncementReplyController extends Controller
     {
         $announcement = Announcement::findOrFail($announcementId);
 
-        $query = AnnouncementReply::forAnnouncement($announcementId)
-            ->with('user');
+        $query = AnnouncementReply::forAnnouncement($announcementId);
 
         if ($request->boolean('active_only', true)) {
             $query->active();
         }
 
         $replies = $query->orderBy('created_at', 'asc')
-            ->paginate($request->get('per_page', 20));
+            ->get()
+            ->each(function ($reply) {
+                // Load only the correct relationship based on user_type
+                if ($reply->user_type === 'admin') {
+                    $reply->load('user');
+                } else {
+                    $reply->load('traineeUser');
+                }
+            });
+
+        $paginatedReplies = new \Illuminate\Pagination\LengthAwarePaginator(
+            $replies,
+            $query->count(),
+            $request->get('per_page', 20),
+            $request->get('page', 1)
+        );
 
         return response()->json([
             'announcement' => $announcement,
-            'replies' => $replies
+            'replies' => $paginatedReplies
         ]);
     }
 
@@ -44,7 +58,7 @@ class AnnouncementReplyController extends Controller
         $reply = AnnouncementReply::create([
             'announcement_id' => $announcementId,
             'user_id' => auth()->id(),
-            'user_type' => 'admin',  // Since this is admin controller  
+            'user_type' => $request->user_type,  // Since this is admin controller  
             'content' => $validated['content']
         ]);
 

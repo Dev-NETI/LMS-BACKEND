@@ -52,10 +52,7 @@ class AnnouncementController extends Controller
         // Load the correct user relationship based on user_type
         if ($announcement->user_type === 'admin') {
             $announcement->load('createdByUser');
-        } else {
-            $announcement->load('createdByTrainee');
         }
-
         return response()->json([
             'message' => 'Announcement created successfully',
             'announcement' => $announcement
@@ -104,7 +101,7 @@ class AnnouncementController extends Controller
         }
 
         $announcements = Announcement::where('schedule_id', $request->sched_id)
-            ->with(['createdByUser', 'createdByTrainee'])
+            ->with(['createdByUser'])
             ->withCount('replies')
             ->orderBy('published_at', 'desc')
             ->get();

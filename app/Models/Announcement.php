@@ -33,27 +33,6 @@ class Announcement extends Model
         return $this->belongsTo(User::class, 'created_by_user_id', 'id');
     }
 
-    public function createdByTrainee()
-    {
-        return $this->belongsTo(Trainee::class, 'created_by_user_id', 'traineeid');
-    }
-
-    public function getCreatedByUserAttribute()
-    {
-        if ($this->user_type === 'admin') {
-            $user = $this->getRelationValue('createdByUser');
-        } else {
-            $user = $this->getRelationValue('createdByTrainee');
-        }
-
-        if ($user) {
-            $userData = $user->toArray();
-            $userData['user_type'] = $this->user_type;
-            return $userData;
-        }
-        return null;
-    }
-
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
