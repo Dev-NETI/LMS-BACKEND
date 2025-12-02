@@ -44,6 +44,8 @@ Route::prefix('trainee')->group(function () {
         Route::post('/progress/start', [TraineeProgressController::class, 'markAsStarted']);
         Route::post('/progress/complete', [TraineeProgressController::class, 'markAsCompleted']);
         Route::post('/progress/update', [TraineeProgressController::class, 'updateProgress']);
+
+        Route::get('/courses/{courseId}/details', [CourseDetailController::class, 'getByCourse']);
     });
 });
 
