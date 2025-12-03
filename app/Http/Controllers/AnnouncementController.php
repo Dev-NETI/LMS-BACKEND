@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Announcement;
 use App\Models\Schedule;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class AnnouncementController extends Controller
 {
@@ -53,6 +55,19 @@ class AnnouncementController extends Controller
         if ($announcement->user_type === 'admin') {
             $announcement->load('createdByUser');
         }
+
+        // Auto-create notifications for all enrolled trainees
+        try {
+            $notificationsCreated = Notification::createForAnnouncement(
+                $announcement->id, 
+                $announcement->schedule_id
+            );
+            Log::info("Created {$notificationsCreated} notifications for announcement {$announcement->id}");
+        } catch (\Exception $e) {
+            Log::error('Failed to create notifications for announcement: ' . $e->getMessage());
+            // Don't fail the announcement creation if notification creation fails
+        }
+
         return response()->json([
             'message' => 'Announcement created successfully',
             'announcement' => $announcement

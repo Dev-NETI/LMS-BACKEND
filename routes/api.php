@@ -12,6 +12,7 @@ use App\Http\Controllers\CourseDetailController;
 use App\Http\Controllers\TrainingMaterialController;
 use App\Http\Controllers\CourseContentController;
 use App\Http\Controllers\TraineeProgressController;
+use App\Http\Controllers\NotificationController;
 
 // SPA Authentication (session-based) - for frontend
 Route::prefix('trainee')->group(function () {
@@ -46,6 +47,13 @@ Route::prefix('trainee')->group(function () {
         Route::post('/progress/update', [TraineeProgressController::class, 'updateProgress']);
 
         Route::get('/courses/{courseId}/details', [CourseDetailController::class, 'getByCourse']);
+
+        // Notification routes for trainees
+        Route::get('/notifications', [NotificationController::class, 'getTraineeNotifications']);
+        Route::get('/notifications/unread-count', [NotificationController::class, 'getUnreadCount']);
+        Route::patch('/notifications/{notificationId}/read', [NotificationController::class, 'markAsRead']);
+        Route::patch('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+        Route::delete('/notifications/{notificationId}', [NotificationController::class, 'deleteNotification']);
     });
 });
 
@@ -96,6 +104,9 @@ Route::prefix('admin')->group(function () {
         Route::get('/schedules/{scheduleId}/progress', [TraineeProgressController::class, 'getTraineeProgressBySchedule']);
         Route::get('/progress/{progressId}/activity-log', [TraineeProgressController::class, 'getActivityLog']);
         Route::post('/progress/update', [TraineeProgressController::class, 'updateProgress']);
+
+        // Notification routes for admin
+        Route::post('/notifications/announcement', [NotificationController::class, 'createAnnouncementNotification']);
     });
 });
 
