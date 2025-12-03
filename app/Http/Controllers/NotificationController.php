@@ -31,9 +31,7 @@ class NotificationController extends Controller
             $unreadOnly = $request->boolean('unread_only');
 
             // Get enrolled schedule IDs for this trainee first
-            $enrolledScheduleIds = \DB::connection('main_db')
-                ->table('tblenroled')
-                ->where('traineeid', $traineeId)
+            $enrolledScheduleIds = Enrolled::where('traineeid', $traineeId)
                 ->where('pendingid', 0) // Active enrollments only
                 ->pluck('scheduleid');
 
@@ -112,9 +110,7 @@ class NotificationController extends Controller
             $traineeId = $user->traineeid;
 
             // Get enrolled schedule IDs for this trainee first
-            $enrolledScheduleIds = \DB::connection('main_db')
-                ->table('tblenroled')
-                ->where('traineeid', $traineeId)
+            $enrolledScheduleIds = Enrolled::where('traineeid', $traineeId)
                 ->where('pendingid', 0) // Active enrollments only
                 ->pluck('scheduleid');
 
@@ -150,9 +146,7 @@ class NotificationController extends Controller
             $traineeId = $user->traineeid;
 
             // Get enrolled schedule IDs for this trainee first
-            $enrolledScheduleIds = \DB::connection('main_db')
-                ->table('tblenroled')
-                ->where('traineeid', $traineeId)
+            $enrolledScheduleIds = Enrolled::where('traineeid', $traineeId)
                 ->where('pendingid', 0) // Active enrollments only
                 ->pluck('scheduleid');
 
@@ -197,9 +191,7 @@ class NotificationController extends Controller
             $traineeId = $user->traineeid;
 
             // Get enrolled schedule IDs for this trainee first
-            $enrolledScheduleIds = \DB::connection('main_db')
-                ->table('tblenroled')
-                ->where('traineeid', $traineeId)
+            $enrolledScheduleIds = Enrolled::where('traineeid', $traineeId)
                 ->where('pendingid', 0) // Active enrollments only
                 ->pluck('scheduleid');
 
