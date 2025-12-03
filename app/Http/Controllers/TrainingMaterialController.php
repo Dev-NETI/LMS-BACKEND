@@ -50,7 +50,7 @@ class TrainingMaterialController extends Controller
         ]);
 
         $file = $request->file('file');
-        
+
         // Store file securely with encryption
         $secureFileData = $this->secureFileService->storeSecureFile($file);
 
@@ -154,13 +154,13 @@ class TrainingMaterialController extends Controller
             'user_agent' => request()->userAgent(),
             'action' => 'download'
         ]);
-        
+
         if (!$this->secureFileService->secureFileExists($trainingMaterial->file_path)) {
             Log::warning('Secure file not found for download', [
                 'file_id' => $trainingMaterial->id,
                 'file_path' => $trainingMaterial->file_path
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'File not found'
@@ -168,14 +168,14 @@ class TrainingMaterialController extends Controller
         }
 
         $decryptedContent = $this->secureFileService->getSecureFile($trainingMaterial->file_path);
-        
+
         if ($decryptedContent === null) {
             Log::error('Failed to decrypt secure file for download', [
                 'file_id' => $trainingMaterial->id,
                 'file_path' => $trainingMaterial->file_path,
                 'user_id' => Auth::id()
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Unable to access file'
@@ -206,13 +206,13 @@ class TrainingMaterialController extends Controller
             'user_agent' => request()->userAgent(),
             'action' => 'view'
         ]);
-        
+
         if (!$this->secureFileService->secureFileExists($trainingMaterial->file_path)) {
             Log::warning('Secure file not found', [
                 'file_id' => $trainingMaterial->id,
                 'file_path' => $trainingMaterial->file_path
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'File not found'
@@ -220,14 +220,14 @@ class TrainingMaterialController extends Controller
         }
 
         $decryptedContent = $this->secureFileService->getSecureFile($trainingMaterial->file_path);
-        
+
         if ($decryptedContent === null) {
             Log::error('Failed to decrypt secure file', [
                 'file_id' => $trainingMaterial->id,
                 'file_path' => $trainingMaterial->file_path,
                 'user_id' => Auth::id()
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Unable to access file'
