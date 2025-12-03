@@ -16,25 +16,49 @@ use Illuminate\Support\Facades\Validator;
 class TraineeProgressController extends Controller
 {
     // Get progress overview for a specific course and trainee
-    public function getCourseProgress(Request $request, $courseId, $traineeId = null): JsonResponse
+    public function getCourseProgress($courseId, $scheduleId): JsonResponse
     {
         try {
             $traineeId = $traineeId ?? Auth::id();
 
+            // Overall course progress
             $progressData = TraineeProgress::getCourseProgress($traineeId, $courseId);
 
-            // Get detailed progress for each module
-            $moduleProgress = TraineeProgress::with(['courseContent'])
-                ->byTrainee($traineeId)
-                ->byCourse($courseId)
-                ->get();
+            // Get all modules in the course
+            $data = CourseContent::where('course_id', $courseId)->get();
+
+            foreach ($data as $module) {
+
+                // Create module-level progress if not exists
+                TraineeProgress::firstOrCreate(
+                    [
+                        'trainee_id' => $traineeId,
+                        'course_id' => $courseId,
+                        'course_content_id' => $module->id
+                    ],
+                    [
+                        'schedule_id' => $scheduleId,
+                        'status' => 'not_started',
+                        'completion_percentage' => 0,
+                        'time_spent' => 0,
+                        'started_at' => null,
+                        'completed_at' => null,
+                        'last_activity' => now(),
+                        'activity_log' => null,
+                        'notes' => null,
+                    ]
+                );
+            }
+
+            $modules = TraineeProgress::where('course_id', $courseId)->get();
+
 
             return response()->json([
                 'success' => true,
                 'trainee_id' => $traineeId,
                 'course_id' => $courseId,
                 'overview' => $progressData,
-                'modules' => $moduleProgress
+                'modules' => $modules
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -44,6 +68,7 @@ class TraineeProgressController extends Controller
             ], 500);
         }
     }
+
 
     // Get progress for all trainees in a course (admin view)
     public function getTraineeProgressByCourse(Request $request, $courseId): JsonResponse
@@ -63,9 +88,7 @@ class TraineeProgressController extends Controller
             $course = Course::find($courseId);
 
             // Get all enrolled trainees for this course
-            $enrolledTrainees = DB::connection('main_db')
-                ->table('tblenrolled')
-                ->where('courseid', $courseId)
+            $enrolledTrainees = Enrolled::where('courseid', $courseId)
                 ->pluck('traineeid');
 
             // Calculate statistics

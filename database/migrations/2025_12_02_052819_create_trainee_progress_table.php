@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('trainee_progress', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('trainee_id');
+            $table->unsignedBigInteger('schedule_id');
             $table->unsignedBigInteger('course_id');
             $table->unsignedBigInteger('course_content_id');
             $table->enum('status', ['not_started', 'in_progress', 'completed'])->default('not_started');
@@ -25,16 +26,16 @@ return new class extends Migration
             $table->json('activity_log')->nullable(); // Track detailed activities
             $table->text('notes')->nullable();
             $table->timestamps();
-            
+
             // Indexes
             $table->index(['trainee_id', 'course_id']);
             $table->index(['trainee_id', 'course_content_id']);
             $table->index(['course_id', 'status']);
             $table->index('last_activity');
-            
+
             // Unique constraint to prevent duplicate progress entries
             $table->unique(['trainee_id', 'course_content_id']);
-            
+
             // Foreign key constraints (commented out as they reference different databases)
             // $table->foreign('trainee_id')->references('id')->on('users')->onDelete('cascade');
             // $table->foreign('course_id')->references('courseid')->on('main_db.tblcourses')->onDelete('cascade');

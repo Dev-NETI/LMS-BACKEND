@@ -12,6 +12,7 @@ class TraineeProgress extends Model
     protected $fillable = [
         'trainee_id',
         'course_id',
+        'schedule_id',
         'course_content_id',
         'status',
         'time_spent',
@@ -86,25 +87,25 @@ class TraineeProgress extends Model
     public function getTimeSpentHumanAttribute()
     {
         $minutes = $this->time_spent;
-        
+
         if ($minutes < 60) {
             return $minutes . ' min';
         }
-        
+
         $hours = floor($minutes / 60);
         $remainingMinutes = $minutes % 60;
-        
+
         if ($hours < 24) {
-            return $remainingMinutes > 0 ? 
-                $hours . 'h ' . $remainingMinutes . 'm' : 
+            return $remainingMinutes > 0 ?
+                $hours . 'h ' . $remainingMinutes . 'm' :
                 $hours . 'h';
         }
-        
+
         $days = floor($hours / 24);
         $remainingHours = $hours % 24;
-        
-        return $remainingHours > 0 ? 
-            $days . 'd ' . $remainingHours . 'h' : 
+
+        return $remainingHours > 0 ?
+            $days . 'd ' . $remainingHours . 'h' :
             $days . 'd';
     }
 
@@ -113,7 +114,7 @@ class TraineeProgress extends Model
         if (!$this->started_at) {
             return null;
         }
-        
+
         return Carbon::parse($this->started_at)->diffForHumans(null, true);
     }
 
@@ -193,7 +194,7 @@ class TraineeProgress extends Model
     public static function getCourseProgress($traineeId, $courseId)
     {
         $totalContent = CourseContent::where('course_id', $courseId)->where('is_active', true)->count();
-        
+
         if ($totalContent === 0) {
             return [
                 'total_modules' => 0,
@@ -206,11 +207,11 @@ class TraineeProgress extends Model
         }
 
         $progress = self::byTrainee($traineeId)->byCourse($courseId)->get();
-        
+
         $completedModules = $progress->where('status', 'completed')->count();
         $inProgressModules = $progress->where('status', 'in_progress')->count();
         $totalTimeSpent = $progress->sum('time_spent');
-        
+
         return [
             'total_modules' => $totalContent,
             'completed_modules' => $completedModules,

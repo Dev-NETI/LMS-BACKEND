@@ -41,7 +41,7 @@ Route::prefix('trainee')->group(function () {
         Route::get('/training-materials/{trainingMaterial}/view', [TrainingMaterialController::class, 'view'])->middleware('secure.file');
 
         // Progress tracking routes for trainees
-        Route::get('/courses/{courseId}/progress', [TraineeProgressController::class, 'getCourseProgress']);
+        Route::get('/courses/{courseId}/progress/{scheduleId}', [TraineeProgressController::class, 'getCourseProgress']);
         Route::post('/progress/start', [TraineeProgressController::class, 'markAsStarted']);
         Route::post('/progress/complete', [TraineeProgressController::class, 'markAsCompleted']);
         Route::post('/progress/update', [TraineeProgressController::class, 'updateProgress']);
