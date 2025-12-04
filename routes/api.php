@@ -34,6 +34,7 @@ Route::prefix('trainee')->group(function () {
         Route::get('/course-content/{courseContent}', [CourseContentController::class, 'show']);
         Route::get('/course-content/{courseContent}/download', [CourseContentController::class, 'download'])->middleware('secure.file');
         Route::get('/course-content/{courseContent}/view', [CourseContentController::class, 'view'])->middleware('secure.file');
+        Route::get('/course-content/{courseContent}/articulate', [CourseContentController::class, 'getArticulateContent'])->middleware('secure.file');
 
         // Training Materials routes for trainees (read-only access)
         Route::get('/courses/{courseId}/training-materials', [TrainingMaterialController::class, 'getByCourse']);
@@ -96,6 +97,8 @@ Route::prefix('admin')->group(function () {
         Route::get('/courses/{courseId}/content', [CourseContentController::class, 'getByCourse']);
         Route::get('/course-content/{courseContent}/download', [CourseContentController::class, 'download'])->middleware('secure.file');
         Route::get('/course-content/{courseContent}/view', [CourseContentController::class, 'view'])->middleware('secure.file');
+        Route::get('/course-content/{courseContent}/articulate', [CourseContentController::class, 'getArticulateContent'])->middleware('secure.file');
+        Route::delete('/course-content/{courseContent}/cleanup', [CourseContentController::class, 'cleanupArticulateContent']);
 
         // Progress monitoring routes for admins
         Route::get('/progress/report', [TraineeProgressController::class, 'getProgressReport']);

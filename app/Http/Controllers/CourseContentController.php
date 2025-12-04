@@ -345,4 +345,171 @@ class CourseContentController extends Controller
             'Content-Length' => strlen($decryptedContent)
         ]);
     }
+
+    public function getArticulateContent(CourseContent $courseContent): JsonResponse
+    {
+        if (!$courseContent->isFile() || $courseContent->file_type !== 'articulate_html') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Content is not an Articulate HTML file'
+            ], 400);
+        }
+
+        Log::info('Articulate content access attempt', [
+            'user_id' => Auth::id(),
+            'content_id' => $courseContent->id,
+            'file_name' => $courseContent->file_name,
+            'ip_address' => request()->ip(),
+            'action' => 'articulate_access'
+        ]);
+
+        if (!$this->secureFileService->secureFileExists($courseContent->file_path)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'File not found'
+            ], 404);
+        }
+
+        try {
+            $indexUrl = $this->extractAndServeArticulateContent($courseContent);
+
+            if (!$indexUrl) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unable to extract Articulate content'
+                ], 500);
+            }
+
+            return response()->json([
+                'success' => true,
+                'index_url' => $indexUrl,
+                'content_id' => $courseContent->id,
+                'title' => $courseContent->title
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to process Articulate content', [
+                'content_id' => $courseContent->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error processing Articulate content'
+            ], 500);
+        }
+    }
+
+    private function extractAndServeArticulateContent(CourseContent $courseContent): ?string
+    {
+        $decryptedContent = $this->secureFileService->getSecureFile($courseContent->file_path);
+
+        if ($decryptedContent === null) {
+            return null;
+        }
+
+        $tempZipPath = storage_path('app/temp/' . uniqid() . '.zip');
+        $extractPath = storage_path('app/public/articulate/' . $courseContent->id);
+
+        if (!file_exists(dirname($tempZipPath))) {
+            mkdir(dirname($tempZipPath), 0755, true);
+        }
+
+        if (!file_exists($extractPath)) {
+            mkdir($extractPath, 0755, true);
+        }
+
+        file_put_contents($tempZipPath, $decryptedContent);
+
+        $zip = new ZipArchive;
+        $result = $zip->open($tempZipPath);
+
+        if ($result !== TRUE) {
+            if (file_exists($tempZipPath)) {
+                unlink($tempZipPath);
+            }
+            return null;
+        }
+
+        $zip->extractTo($extractPath);
+        $zip->close();
+
+        unlink($tempZipPath);
+
+        $indexPath = $this->findIndexFile($extractPath);
+
+        if (!$indexPath) {
+            $this->cleanupExtractedFiles($extractPath);
+            return null;
+        }
+
+        // Create a signed URL that bypasses authentication for a limited time
+        $token = hash('sha256', $courseContent->id . time() . config('app.key'));
+        $expiresAt = time() + (60 * 30); // 30 minutes
+
+        // Store the token temporarily (you might want to use Redis/Cache for production)
+        cache()->put("articulate_token_{$token}", [
+            'content_id' => $courseContent->id,
+            'expires_at' => $expiresAt,
+            'path' => $indexPath
+        ], 30 * 60); // 30 minutes
+
+        return url("/articulate-viewer/{$token}/index.html");
+    }
+
+    private function findIndexFile(string $extractPath): ?string
+    {
+        $possibleIndexFiles = ['index.html', 'index.htm', 'story.html'];
+
+        foreach ($possibleIndexFiles as $indexFile) {
+            $fullPath = $extractPath . '/' . $indexFile;
+            if (file_exists($fullPath)) {
+                return $fullPath;
+            }
+        }
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($extractPath)
+        );
+
+        foreach ($iterator as $file) {
+            if ($file->isFile()) {
+                $fileName = $file->getBasename();
+                if (in_array(strtolower($fileName), array_map('strtolower', $possibleIndexFiles))) {
+                    return $file->getRealPath();
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function cleanupExtractedFiles(string $path): void
+    {
+        if (is_dir($path)) {
+            $files = array_diff(scandir($path), array('.', '..'));
+            foreach ($files as $file) {
+                $fullPath = $path . '/' . $file;
+                if (is_dir($fullPath)) {
+                    $this->cleanupExtractedFiles($fullPath);
+                } else {
+                    unlink($fullPath);
+                }
+            }
+            rmdir($path);
+        }
+    }
+
+    public function cleanupArticulateContent(CourseContent $courseContent): JsonResponse
+    {
+        $extractPath = storage_path('app/public/articulate/' . $courseContent->id);
+
+        if (is_dir($extractPath)) {
+            $this->cleanupExtractedFiles($extractPath);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Articulate content cleaned up successfully'
+        ]);
+    }
 }

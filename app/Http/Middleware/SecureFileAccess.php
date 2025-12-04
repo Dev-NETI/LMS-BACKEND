@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use App\Models\TrainingMaterial;
+use App\Models\CourseContent;
 
 class SecureFileAccess
 {
@@ -35,12 +36,20 @@ class SecureFileAccess
             ], 401);
         }
 
-        // Get the training material from the route
+        // Get the content from the route (either training material or course content)
         $trainingMaterialId = $request->route('trainingMaterial');
+        $courseContentId = $request->route('courseContent');
 
-        if ($trainingMaterialId) {
-            // Check if user has permission to access this specific file
-            $material = TrainingMaterial::find($trainingMaterialId->id ?? $trainingMaterialId);
+        if ($trainingMaterialId || $courseContentId) {
+            $material = null;
+            
+            if ($trainingMaterialId) {
+                // Check training material access
+                $material = TrainingMaterial::find($trainingMaterialId->id ?? $trainingMaterialId);
+            } elseif ($courseContentId) {
+                // Check course content access
+                $material = CourseContent::find($courseContentId->id ?? $courseContentId);
+            }
 
             if (!$material) {
                 return response()->json([
@@ -55,7 +64,7 @@ class SecureFileAccess
                 // Admin has access
                 return $next($request);
             } elseif (Auth::guard('trainee-sanctum')->check()) {
-                // Trainee has access to their own materials
+                // Trainee has access to materials
                 return $next($request);
             }
 
