@@ -13,6 +13,7 @@ use App\Http\Controllers\TrainingMaterialController;
 use App\Http\Controllers\CourseContentController;
 use App\Http\Controllers\TraineeProgressController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\QuestionController;
 
 // SPA Authentication (session-based) - for frontend
 Route::prefix('trainee')->group(function () {
@@ -97,6 +98,15 @@ Route::prefix('admin')->group(function () {
         Route::put('/course-content/update-order', [CourseContentController::class, 'updateOrder']);
         Route::get('/courses/{courseId}/content/next-order', [CourseContentController::class, 'getNextOrderForCourse']);
         Route::get('/courses/{courseId}/content', [CourseContentController::class, 'getByCourse']);
+
+        // Question Bank routes
+        Route::put('/questions/update-order', [QuestionController::class, 'updateOrder']);
+        Route::put('/questions/bulk-update', [QuestionController::class, 'bulkUpdate']);
+        Route::delete('/questions/bulk-delete', [QuestionController::class, 'bulkDelete']);
+        Route::post('/questions/{question}/duplicate', [QuestionController::class, 'duplicate']);
+        Route::get('/courses/{courseId}/questions', [QuestionController::class, 'getQuestionsByCourse']);
+        Route::get('/courses/{courseId}/questions/next-order', [QuestionController::class, 'getNextOrderForCourse']);
+        Route::apiResource('questions', QuestionController::class);
         Route::get('/course-content/{courseContent}/download', [CourseContentController::class, 'download'])->middleware('secure.file');
         Route::get('/course-content/{courseContent}/view', [CourseContentController::class, 'view'])->middleware('secure.file');
         Route::get('/course-content/{courseContent}/articulate', [CourseContentController::class, 'getArticulateContent'])->middleware('secure.file');
