@@ -85,6 +85,9 @@ class CourseContentController extends Controller
             ], 422);
         }
 
+        // Auto-increment order if not provided
+        $order = $validated['order'] ?? $this->getNextOrder($validated['course_id']);
+
         $content = CourseContent::create([
             'course_id' => $validated['course_id'],
             'title' => $validated['title'],
@@ -92,7 +95,7 @@ class CourseContentController extends Controller
             'content_type' => 'url',
             'file_type' => 'link',
             'url' => $request->url,
-            'order' => $validated['order'] ?? 0,
+            'order' => $order,
             'uploaded_by_user_id' => Auth::id(),
         ]);
 
@@ -141,6 +144,9 @@ class CourseContentController extends Controller
 
         $secureFileData = $this->secureFileService->storeSecureFile($file, 'secure-course-content');
 
+        // Auto-increment order if not provided
+        $order = $validated['order'] ?? $this->getNextOrder($validated['course_id']);
+
         $content = CourseContent::create([
             'course_id' => $validated['course_id'],
             'title' => $validated['title'],
@@ -151,7 +157,7 @@ class CourseContentController extends Controller
             'file_path' => $secureFileData['encrypted_path'],
             'mime_type' => $secureFileData['mime_type'],
             'file_size' => $secureFileData['size'],
-            'order' => $validated['order'] ?? 0,
+            'order' => $order,
             'uploaded_by_user_id' => Auth::id(),
         ]);
 
@@ -511,5 +517,58 @@ class CourseContentController extends Controller
             'success' => true,
             'message' => 'Articulate content cleaned up successfully'
         ]);
+    }
+
+    public function updateOrder(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'updates' => 'required|array',
+            'updates.*.id' => 'required|integer|exists:course_content,id',
+            'updates.*.order' => 'required|integer|min:0'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            foreach ($request->updates as $update) {
+                CourseContent::where('id', $update['id'])
+                    ->update(['order' => $update['order']]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Content order updated successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update content order'
+            ], 500);
+        }
+    }
+
+    public function getNextOrderForCourse($courseId): JsonResponse
+    {
+        $nextOrder = $this->getNextOrder($courseId);
+
+        return response()->json([
+            'success' => true,
+            'nextOrder' => $nextOrder
+        ]);
+    }
+
+    private function getNextOrder($courseId): int
+    {
+        $maxOrder = CourseContent::where('course_id', $courseId)
+            ->where('is_active', true)
+            ->max('order');
+
+        return ($maxOrder ?? -1) + 1;
     }
 }

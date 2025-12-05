@@ -93,12 +93,17 @@ Route::prefix('admin')->group(function () {
         Route::get('/training-materials/{trainingMaterial}/view', [TrainingMaterialController::class, 'view'])->middleware('secure.file');
 
         // Course Content routes (for self-pace learning)
-        Route::apiResource('course-content', CourseContentController::class);
+        // Specific routes must come before the resource routes
+        Route::put('/course-content/update-order', [CourseContentController::class, 'updateOrder']);
+        Route::get('/courses/{courseId}/content/next-order', [CourseContentController::class, 'getNextOrderForCourse']);
         Route::get('/courses/{courseId}/content', [CourseContentController::class, 'getByCourse']);
         Route::get('/course-content/{courseContent}/download', [CourseContentController::class, 'download'])->middleware('secure.file');
         Route::get('/course-content/{courseContent}/view', [CourseContentController::class, 'view'])->middleware('secure.file');
         Route::get('/course-content/{courseContent}/articulate', [CourseContentController::class, 'getArticulateContent'])->middleware('secure.file');
         Route::delete('/course-content/{courseContent}/cleanup', [CourseContentController::class, 'cleanupArticulateContent']);
+        
+        // Resource routes (these create wildcard patterns that can conflict with specific routes)
+        Route::apiResource('course-content', CourseContentController::class);
 
         // Progress monitoring routes for admins
         Route::get('/progress/report', [TraineeProgressController::class, 'getProgressReport']);
