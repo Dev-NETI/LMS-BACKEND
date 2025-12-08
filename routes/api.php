@@ -14,6 +14,8 @@ use App\Http\Controllers\CourseContentController;
 use App\Http\Controllers\TraineeProgressController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\QuestionController;
+use App\Http\Controllers\AssessmentController;
+use App\Http\Controllers\AdminAssessmentController;
 
 // SPA Authentication (session-based) - for frontend
 Route::prefix('trainee')->group(function () {
@@ -56,6 +58,17 @@ Route::prefix('trainee')->group(function () {
         Route::patch('/notifications/{notificationId}/read', [NotificationController::class, 'markAsRead']);
         Route::patch('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
         Route::delete('/notifications/{notificationId}', [NotificationController::class, 'deleteNotification']);
+
+        // Assessment routes for trainees
+        Route::get('/assessments/stats', [AssessmentController::class, 'getAssessmentStats']);
+        Route::get('/schedules/{scheduleId}/assessments', [AssessmentController::class, 'getScheduleAssessments']);
+        Route::get('/assessments', [AssessmentController::class, 'getTraineeAssessments']);
+        Route::post('/assessments/{assessmentId}/start', [AssessmentController::class, 'startAttempt']);
+        Route::get('/assessments/{assessmentId}/questions', [AssessmentController::class, 'getAssessmentQuestions']);
+        Route::post('/assessments/{assessmentId}/questions/{questionId}/answer', [AssessmentController::class, 'saveAnswer']);
+        Route::post('/assessments/{assessmentId}/submit', [AssessmentController::class, 'submitAttempt']);
+        Route::get('/assessment-attempts/{attemptId}/result', [AssessmentController::class, 'getResult']);
+        Route::get('/assessment-attempts/{attemptId}/status', [AssessmentController::class, 'getAttemptStatus']);
     });
 });
 
@@ -107,11 +120,18 @@ Route::prefix('admin')->group(function () {
         Route::get('/courses/{courseId}/questions', [QuestionController::class, 'getQuestionsByCourse']);
         Route::get('/courses/{courseId}/questions/next-order', [QuestionController::class, 'getNextOrderForCourse']);
         Route::apiResource('questions', QuestionController::class);
+
+        // Assessment Management routes
+        Route::get('/courses/{courseId}/assessments', [AdminAssessmentController::class, 'getAssessmentsByCourse']);
+        Route::post('/courses/{courseId}/assessments', [AdminAssessmentController::class, 'store']);
+        Route::get('/assessments/{id}/stats', [AdminAssessmentController::class, 'getAssessmentStats']);
+        Route::put('/assessments/{id}/questions', [AdminAssessmentController::class, 'updateQuestions']);
+        Route::apiResource('assessments', AdminAssessmentController::class)->except(['index', 'store']);
         Route::get('/course-content/{courseContent}/download', [CourseContentController::class, 'download'])->middleware('secure.file');
         Route::get('/course-content/{courseContent}/view', [CourseContentController::class, 'view'])->middleware('secure.file');
         Route::get('/course-content/{courseContent}/articulate', [CourseContentController::class, 'getArticulateContent'])->middleware('secure.file');
         Route::delete('/course-content/{courseContent}/cleanup', [CourseContentController::class, 'cleanupArticulateContent']);
-        
+
         // Resource routes (these create wildcard patterns that can conflict with specific routes)
         Route::apiResource('course-content', CourseContentController::class);
 
