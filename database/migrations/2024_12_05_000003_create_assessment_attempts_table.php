@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('assessment_attempts', function (Blueprint $table) {
             $table->id();
             $table->foreignId('assessment_id')->constrained('assessments')->onDelete('cascade');
-            $table->foreignId('trainee_id')->constrained('users')->onDelete('cascade');
+            $table->unsignedBigInteger('trainee_id'); // References tbltraineeaccount.traineeid on main_db
             $table->integer('attempt_number')->default(1);
             $table->timestamp('started_at');
             $table->timestamp('submitted_at')->nullable();

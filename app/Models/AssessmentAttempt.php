@@ -42,7 +42,7 @@ class AssessmentAttempt extends Model
 
     public function trainee(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'trainee_id');
+        return $this->belongsTo(Trainee::class, 'trainee_id', 'traineeid');
     }
 
     public function answers(): HasMany
@@ -81,7 +81,7 @@ class AssessmentAttempt extends Model
 
         $timeLimit = $this->assessment->time_limit * 60; // Convert to seconds
         $elapsed = now()->diffInSeconds($this->started_at);
-        
+
         return $elapsed >= $timeLimit;
     }
 
@@ -96,7 +96,7 @@ class AssessmentAttempt extends Model
 
         $timeLimit = $this->assessment->time_limit * 60; // Convert to seconds
         $elapsed = now()->diffInSeconds($this->started_at);
-        
+
         return max(0, $timeLimit - $elapsed);
     }
 
@@ -118,7 +118,7 @@ class AssessmentAttempt extends Model
     public function submit(): void
     {
         $scoreData = $this->assessment->calculateScore($this);
-        
+
         $this->update([
             'status' => 'submitted',
             'submitted_at' => now(),

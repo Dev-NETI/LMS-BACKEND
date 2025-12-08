@@ -196,9 +196,9 @@ class AssessmentController extends Controller
         // Check if assessment exists and trainee is enrolled
         $assessment = Assessment::findOrFail($assessmentId);
 
-        $enrollment = Enrolled::where('userid', $traineeId)
+        $enrollment = Enrolled::where('traineeid', $traineeId)
             ->where('courseid', $assessment->course_id)
-            ->where('status', 'active')
+            ->where('pendingid', 0)
             ->exists();
 
         if (!$enrollment) {
