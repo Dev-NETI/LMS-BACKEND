@@ -5,10 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Assessment;
 use App\Models\AssessmentAttempt;
 use App\Models\AssessmentAnswer;
-use App\Models\Course;
 use App\Models\Enrolled;
-use App\Models\Enrollment;
-use App\Models\Schedule;
+use App\Models\SecurityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -151,7 +149,7 @@ class AssessmentController extends Controller
         // Get assessments for enrolled courses
         $assessments = Assessment::whereIn('course_id', $enrolledCourses)
             ->where('is_active', true)
-            ->with(['course:courseid,fullname'])
+            ->with(['course:courseid,coursename'])
             ->get()
             ->map(function ($assessment) use ($traineeId) {
                 $attempts = $assessment->getTraineeAttempts($traineeId);
@@ -361,9 +359,88 @@ class AssessmentController extends Controller
     }
 
     /**
+     * Log security events for assessment monitoring
+     */
+    public function logSecurityEvent(Request $request, $assessmentId)
+    {
+        $traineeId = Auth::id();
+
+        $request->validate([
+            'activity' => 'required|string',
+            'timestamp' => 'required|date',
+            'attempt_id' => 'nullable|integer'
+        ]);
+
+        try {
+            // Parse event type from activity
+            $eventType = $this->parseEventTypeFromActivity($request->activity);
+            
+            // Create security log entry in database
+            SecurityLog::logEvent(
+                $traineeId,
+                $assessmentId,
+                $eventType,
+                $request->activity,
+                $request->additional_data ?? [],
+                $request->attempt_id
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Security event logged successfully'
+            ]);
+        } catch (\Exception $e) {
+            // Fallback to Laravel log if database logging fails
+            \Log::error('Failed to log security event to database', [
+                'error' => $e->getMessage(),
+                'trainee_id' => $traineeId,
+                'assessment_id' => $assessmentId,
+                'activity' => $request->activity
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to log security event'
+            ], 500);
+        }
+    }
+
+    /**
+     * Parse event type from activity string
+     */
+    private function parseEventTypeFromActivity($activity)
+    {
+        $activity = strtolower($activity);
+        
+        if (strpos($activity, 'tab_switch') !== false || strpos($activity, 'tab switch') !== false) {
+            return SecurityLog::EVENT_TYPES['TAB_SWITCH'];
+        } elseif (strpos($activity, 'right_click_blocked') !== false || strpos($activity, 'right click blocked') !== false) {
+            return SecurityLog::EVENT_TYPES['RIGHT_CLICK_BLOCKED'];
+        } elseif (strpos($activity, 'shortcut_blocked') !== false || strpos($activity, 'blocked shortcut') !== false) {
+            return SecurityLog::EVENT_TYPES['SHORTCUT_BLOCKED'];
+        } elseif (strpos($activity, 'fullscreen_denied') !== false || strpos($activity, 'fullscreen denied') !== false) {
+            return SecurityLog::EVENT_TYPES['FULLSCREEN_DENIED'];
+        } elseif (strpos($activity, 'window_focus_lost') !== false || strpos($activity, 'focus lost') !== false) {
+            return SecurityLog::EVENT_TYPES['WINDOW_FOCUS_LOST'];
+        } elseif (strpos($activity, 'assessment_started') !== false || strpos($activity, 'started') !== false) {
+            return SecurityLog::EVENT_TYPES['ASSESSMENT_STARTED'];
+        } elseif (strpos($activity, 'assessment_completed') !== false || strpos($activity, 'completed') !== false) {
+            return SecurityLog::EVENT_TYPES['ASSESSMENT_COMPLETED'];
+        } elseif (strpos($activity, 'copy') !== false) {
+            return SecurityLog::EVENT_TYPES['COPY_ATTEMPT'];
+        } elseif (strpos($activity, 'paste') !== false) {
+            return SecurityLog::EVENT_TYPES['PASTE_ATTEMPT'];
+        } elseif (strpos($activity, 'developer_tools') !== false || strpos($activity, 'f12') !== false) {
+            return SecurityLog::EVENT_TYPES['DEVELOPER_TOOLS'];
+        } else {
+            return SecurityLog::EVENT_TYPES['SUSPICIOUS_ACTIVITY'];
+        }
+    }
+
+    /**
      * Submit assessment attempt
      */
-    public function submitAttempt($assessmentId)
+    public function submitAttempt(Request $request, $assessmentId)
     {
         $traineeId = Auth::id();
 
@@ -470,5 +547,113 @@ class AssessmentController extends Controller
                 'is_expired' => $attempt->status === 'expired'
             ]
         ]);
+    }
+
+    /**
+     * Get all security logs for admin monitoring (Admin only)
+     */
+    public function getSecurityLogs(Request $request)
+    {
+        $page = $request->get('page', 1);
+        $perPage = $request->get('per_page', 50);
+        $eventType = $request->get('event_type');
+        $severity = $request->get('severity');
+        $traineeId = $request->get('trainee_id');
+        $assessmentId = $request->get('assessment_id');
+        
+        $query = SecurityLog::with(['trainee:id,firstname,lastname', 'assessment:id,title'])
+                            ->orderBy('event_timestamp', 'desc');
+        
+        // Apply filters
+        if ($eventType) {
+            $query->where('event_type', $eventType);
+        }
+        
+        if ($severity) {
+            $query->where('severity', $severity);
+        }
+        
+        if ($traineeId) {
+            $query->where('trainee_id', $traineeId);
+        }
+        
+        if ($assessmentId) {
+            $query->where('assessment_id', $assessmentId);
+        }
+        
+        // Paginate results
+        $logs = $query->paginate($perPage, ['*'], 'page', $page);
+        
+        return response()->json([
+            'success' => true,
+            'data' => $logs->items(),
+            'pagination' => [
+                'current_page' => $logs->currentPage(),
+                'per_page' => $logs->perPage(),
+                'total' => $logs->total(),
+                'last_page' => $logs->lastPage()
+            ]
+        ]);
+    }
+
+    /**
+     * Get security logs for a specific assessment (Admin only)
+     */
+    public function getAssessmentSecurityLogs($assessmentId)
+    {
+        $logs = SecurityLog::with(['trainee:id,firstname,lastname', 'assessment:id,title'])
+                           ->where('assessment_id', $assessmentId)
+                           ->orderBy('event_timestamp', 'desc')
+                           ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $logs
+        ]);
+    }
+
+    /**
+     * Get security logs for a specific trainee (Admin only)
+     */
+    public function getTraineeSecurityLogs($traineeId)
+    {
+        $logs = SecurityLog::with(['trainee:id,firstname,lastname', 'assessment:id,title'])
+                           ->where('trainee_id', $traineeId)
+                           ->orderBy('event_timestamp', 'desc')
+                           ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $logs
+        ]);
+    }
+
+    /**
+     * Parse a log line to extract security event data
+     */
+    private function parseLogLine($line)
+    {
+        // Extract timestamp from log line
+        preg_match('/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]/', $line, $timeMatches);
+
+        // Extract JSON data from log line
+        if (preg_match('/\{.*\}/', $line, $jsonMatches)) {
+            $jsonData = json_decode($jsonMatches[0], true);
+
+            if ($jsonData) {
+                return [
+                    'timestamp' => $timeMatches[1] ?? null,
+                    'trainee_id' => $jsonData['trainee_id'] ?? null,
+                    'assessment_id' => $jsonData['assessment_id'] ?? null,
+                    'attempt_id' => $jsonData['attempt_id'] ?? null,
+                    'activity' => $jsonData['activity'] ?? null,
+                    'ip_address' => $jsonData['ip_address'] ?? null,
+                    'user_agent' => $jsonData['user_agent'] ?? null,
+                    'event_timestamp' => $jsonData['timestamp'] ?? null,
+                ];
+            }
+        }
+
+        return null;
     }
 }

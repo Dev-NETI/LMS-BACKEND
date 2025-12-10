@@ -66,6 +66,7 @@ Route::prefix('trainee')->group(function () {
         Route::post('/assessments/{assessmentId}/start', [AssessmentController::class, 'startAttempt']);
         Route::get('/assessments/{assessmentId}/questions', [AssessmentController::class, 'getAssessmentQuestions']);
         Route::post('/assessments/{assessmentId}/questions/{questionId}/answer', [AssessmentController::class, 'saveAnswer']);
+        Route::post('/assessments/{assessmentId}/security-log', [AssessmentController::class, 'logSecurityEvent']);
         Route::post('/assessments/{assessmentId}/submit', [AssessmentController::class, 'submitAttempt']);
         Route::get('/assessment-attempts/{attemptId}/result', [AssessmentController::class, 'getResult']);
         Route::get('/assessment-attempts/{attemptId}/status', [AssessmentController::class, 'getAttemptStatus']);
@@ -145,6 +146,11 @@ Route::prefix('admin')->group(function () {
 
         // Notification routes for admin
         Route::post('/notifications/announcement', [NotificationController::class, 'createAnnouncementNotification']);
+        
+        // Security monitoring routes for admin
+        Route::get('/security/logs', [AssessmentController::class, 'getSecurityLogs']);
+        Route::get('/assessments/{assessmentId}/security/logs', [AssessmentController::class, 'getAssessmentSecurityLogs']);
+        Route::get('/trainees/{traineeId}/security/logs', [AssessmentController::class, 'getTraineeSecurityLogs']);
     });
 });
 
