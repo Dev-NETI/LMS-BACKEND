@@ -7,6 +7,7 @@ use App\Models\AssessmentQuestion;
 use App\Models\Question;
 use App\Models\Schedule;
 use App\Models\ScheduleAssessment;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -336,10 +337,90 @@ class AdminAssessmentController extends Controller
             'available_until' => 'nullable|date|after:available_from'
         ]);
 
+        // Validate that assignment dates are within schedule date ranges
+        if ($request->available_from || $request->available_until) {
+            foreach ($request->schedule_ids as $scheduleId) {
+                $schedule = Schedule::where('scheduleid', $scheduleId)->first();
+
+                if (!$schedule) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Schedule with ID {$scheduleId} not found"
+                    ], 404);
+                }
+
+                $scheduleStart = new Carbon($schedule->startdateformat);
+                $scheduleEnd = new Carbon($schedule->enddateformat);
+
+                // Check if it's a same-day schedule
+                $isSameDay = $scheduleStart->isSameDay($scheduleEnd);
+
+                if ($request->available_from) {
+                    $availableFrom = new Carbon($request->available_from);
+
+                    if ($isSameDay) {
+                        // For same-day schedules, both dates must be the same day
+                        if (!$availableFrom->isSameDay($scheduleStart)) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => "Available from date must be {$scheduleStart->format('M d, Y')} for single-day schedule {$schedule->batchno}"
+                            ], 422);
+                        }
+                    } else {
+                        // For multi-day schedules, check normal range
+                        if ($availableFrom->lt($scheduleStart) || $availableFrom->gt($scheduleEnd)) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => "Available from date must be within schedule {$schedule->batchno} date range ({$scheduleStart->format('M d, Y')} - {$scheduleEnd->format('M d, Y')})"
+                            ], 422);
+                        }
+                    }
+                }
+
+                if ($request->available_until) {
+                    $availableUntil = new Carbon($request->available_until);
+
+                    if ($isSameDay) {
+                        // For same-day schedules, both dates must be the same day
+                        if (!$availableUntil->isSameDay($scheduleStart)) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => "Available until date must be {$scheduleStart->format('M d, Y')} for single-day schedule {$schedule->batchno}"
+                            ], 422);
+                        }
+                    } else {
+                        // For multi-day schedules, check normal range
+                        if ($availableUntil->lt($scheduleStart) || $availableUntil->gt($scheduleEnd)) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => "Available until date must be within schedule {$schedule->batchno} date range ({$scheduleStart->format('M d, Y')} - {$scheduleEnd->format('M d, Y')})"
+                            ], 422);
+                        }
+                    }
+                }
+            }
+        }
+
         try {
             DB::beginTransaction();
 
             foreach ($request->schedule_ids as $scheduleId) {
+                $schedule = Schedule::where('scheduleid', $scheduleId)->first();
+                $scheduleStart = new Carbon($schedule->startdateformat);
+                $scheduleEnd = new Carbon($schedule->enddateformat);
+
+                // Auto-set to full schedule range if dates not provided
+                $availableFrom = $request->available_from;
+                $availableUntil = $request->available_until;
+
+                // If dates are not provided, use the full schedule range
+                if (!$availableFrom) {
+                    $availableFrom = $scheduleStart->format('Y-m-d');
+                }
+                if (!$availableUntil) {
+                    $availableUntil = $scheduleEnd->format('Y-m-d');
+                }
+
                 ScheduleAssessment::updateOrCreate(
                     [
                         'assessment_id' => $assessmentId,
@@ -347,8 +428,8 @@ class AdminAssessmentController extends Controller
                     ],
                     [
                         'is_active' => true,
-                        'available_from' => $request->startdateformat,
-                        'available_until' => $request->endadateformat
+                        'available_from' => $availableFrom,
+                        'available_until' => $availableUntil
                     ]
                 );
             }
