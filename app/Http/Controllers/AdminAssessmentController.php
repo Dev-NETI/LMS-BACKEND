@@ -5,7 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Assessment;
 use App\Models\AssessmentQuestion;
 use App\Models\Question;
-use App\Models\Course;
+use App\Models\Schedule;
+use App\Models\ScheduleAssessment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -13,16 +14,28 @@ use Illuminate\Support\Facades\DB;
 class AdminAssessmentController extends Controller
 {
     /**
-     * Get assessments for a course
+     * Get assessments for a course with schedule assignment information
      */
     public function getAssessmentsByCourse($courseId)
     {
         $assessments = Assessment::where('course_id', $courseId)
-            ->with(['createdBy:id,f_name,l_name'])
+            ->with([
+                'createdBy:id,f_name,l_name',
+                'scheduleAssignments.schedule:scheduleid,batchno,startdateformat,enddateformat'
+            ])
             ->withCount('assessmentQuestions as questions_count')
             ->get()
             ->map(function ($assessment) {
                 $assessment->total_points = $assessment->questions()->sum('points');
+                $assessment->assigned_schedules = $assessment->scheduleAssignments->where('is_active', true)->map(function ($assignment) {
+                    return [
+                        'schedule_id' => $assignment->schedule_id,
+                        'schedule_name' => $assignment->schedule->batchno ?? 'Unknown Schedule',
+                        'schedule_code' => $assignment->schedule->scheduleid ?? 'N/A',
+                        'available_from' => $assignment->available_from,
+                        'available_until' => $assignment->available_until,
+                    ];
+                });
                 return $assessment;
             });
 
@@ -294,5 +307,134 @@ class AdminAssessmentController extends Controller
             'success' => true,
             'data' => $assessments
         ]);
+    }
+
+    /**
+     * Get available schedules for a course
+     */
+    public function getCourseSchedules($courseId)
+    {
+        $schedules = Schedule::where('courseid', $courseId)
+            ->select('scheduleid', 'batchno', 'startdateformat', 'enddateformat')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $schedules
+        ]);
+    }
+
+    /**
+     * Assign assessment to schedule(s)
+     */
+    public function assignToSchedules(Request $request, $assessmentId)
+    {
+        $request->validate([
+            'schedule_ids' => 'required|array|min:1',
+            'schedule_ids.*' => 'exists:main_db.tblcourseschedule,scheduleid',
+            'available_from' => 'nullable|date',
+            'available_until' => 'nullable|date|after:available_from'
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            foreach ($request->schedule_ids as $scheduleId) {
+                ScheduleAssessment::updateOrCreate(
+                    [
+                        'assessment_id' => $assessmentId,
+                        'schedule_id' => $scheduleId
+                    ],
+                    [
+                        'is_active' => true,
+                        'available_from' => $request->startdateformat,
+                        'available_until' => $request->endadateformat
+                    ]
+                );
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Assessment assigned to schedule(s) successfully'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to assign assessment to schedules: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Remove assessment from schedule
+     */
+    public function removeFromSchedule(Request $request, $assessmentId, $scheduleId)
+    {
+        try {
+            $deleted = ScheduleAssessment::where('assessment_id', $assessmentId)
+                ->where('schedule_id', $scheduleId)
+                ->delete();
+
+            if ($deleted) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Assessment removed from schedule successfully'
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Assessment assignment not found'
+                ], 404);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to remove assessment from schedule: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update schedule assignment settings
+     */
+    public function updateScheduleAssignment(Request $request, $assessmentId, $scheduleId)
+    {
+        $request->validate([
+            'is_active' => 'boolean',
+            'available_from' => 'nullable|date',
+            'available_until' => 'nullable|date|after:available_from'
+        ]);
+
+        try {
+            $assignment = ScheduleAssessment::where('assessment_id', $assessmentId)
+                ->where('schedule_id', $scheduleId)
+                ->first();
+
+            if (!$assignment) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Assessment assignment not found'
+                ], 404);
+            }
+
+            $assignment->update([
+                'is_active' => $request->input('is_active', $assignment->is_active),
+                'available_from' => $request->available_from,
+                'available_until' => $request->available_until
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Schedule assignment updated successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update schedule assignment: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

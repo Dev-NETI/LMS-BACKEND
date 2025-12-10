@@ -51,8 +51,8 @@ class Assessment extends Model
     public function questions(): BelongsToMany
     {
         return $this->belongsToMany(Question::class, 'assessment_questions')
-                    ->withPivot('order')
-                    ->orderByPivot('order');
+            ->withPivot('order')
+            ->orderByPivot('order');
     }
 
     public function assessmentQuestions(): HasMany
@@ -65,6 +65,18 @@ class Assessment extends Model
         return $this->hasMany(AssessmentAttempt::class)->orderBy('created_at', 'desc');
     }
 
+    public function scheduleAssignments(): HasMany
+    {
+        return $this->hasMany(ScheduleAssessment::class);
+    }
+
+    public function assignedSchedules(): BelongsToMany
+    {
+        return $this->belongsToMany(Schedule::class, 'schedule_assessments', 'assessment_id', 'schedule_id')
+            ->withPivot('is_active', 'available_from', 'available_until')
+            ->withTimestamps();
+    }
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
@@ -73,6 +85,32 @@ class Assessment extends Model
     public function scopeByCourse($query, $courseId)
     {
         return $query->where('course_id', $courseId);
+    }
+
+    public function scopeAssignedToSchedule($query, $scheduleId)
+    {
+        return $query->whereHas('scheduleAssignments', function ($q) use ($scheduleId) {
+            $q->where('schedule_id', $scheduleId)
+                ->where('is_active', true)
+                ->where(function ($subQ) {
+                    $now = now();
+                    $subQ->where(function ($dateQ) use ($now) {
+                        $dateQ->whereNull('available_from')
+                            ->orWhere('available_from', '<=', $now);
+                    })
+                        ->where(function ($dateQ) use ($now) {
+                            $dateQ->whereNull('available_until')
+                                ->orWhere('available_until', '>=', $now);
+                        });
+                });
+        });
+    }
+
+    public function scopeAvailableForTrainee($query, $traineeId)
+    {
+        return $query->whereHas('course.enrollments', function ($q) use ($traineeId) {
+            $q->where('traineeid', $traineeId);
+        });
     }
 
     public function getQuestionsCountAttribute()
@@ -91,11 +129,11 @@ class Assessment extends Model
     public function getQuestionsForAttempt(): \Illuminate\Support\Collection
     {
         $questions = $this->assessmentQuestions()->with('question.options')->get();
-        
+
         if ($this->is_randomized) {
             return $questions->shuffle();
         }
-        
+
         return $questions;
     }
 
@@ -108,7 +146,7 @@ class Assessment extends Model
             ->where('trainee_id', $traineeId)
             ->where('status', '!=', 'expired')
             ->count();
-            
+
         return $attemptCount < $this->max_attempts;
     }
 
@@ -165,14 +203,14 @@ class Assessment extends Model
                 ->first();
 
             if ($answer) {
-                $answerData = $question->isIdentification() 
-                    ? $answer->answer_data 
+                $answerData = $question->isIdentification()
+                    ? $answer->answer_data
                     : (is_array($answer->answer_data) ? $answer->answer_data : [$answer->answer_data]);
-                
+
                 if ($question->checkAnswer($answerData)) {
                     $earnedPoints += $question->points;
                     $correctAnswers++;
-                    
+
                     // Update answer as correct
                     $answer->update([
                         'is_correct' => true,

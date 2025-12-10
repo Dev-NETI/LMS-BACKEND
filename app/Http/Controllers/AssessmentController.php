@@ -91,9 +91,10 @@ class AssessmentController extends Controller
             ], 404);
         }
 
-        // Get assessments for the course
+        // Get assessments that are specifically assigned to this schedule
         $assessments = Assessment::where('course_id', $schedule->courseid)
             ->where('is_active', true)
+            ->assignedToSchedule($scheduleId)
             ->with(['course:courseid,coursename'])
             ->get()
             ->map(function ($assessment) use ($traineeId) {
@@ -136,19 +137,33 @@ class AssessmentController extends Controller
     {
         $traineeId = Auth::id();
 
-        // Get enrolled courses
-        $enrolledCourses = Enrolled::where('traineeid', $traineeId)->pluck('courseid');
+        // Get enrolled schedules for the trainee
+        $enrolledSchedules = Enrolled::where('traineeid', $traineeId)->pluck('scheduleid');
 
-        if ($enrolledCourses->isEmpty()) {
+        if ($enrolledSchedules->isEmpty()) {
             return response()->json([
                 'success' => true,
                 'data' => []
             ]);
         }
 
-        // Get assessments for enrolled courses
-        $assessments = Assessment::whereIn('course_id', $enrolledCourses)
-            ->where('is_active', true)
+        // Get assessments that are assigned to the trainee's enrolled schedules
+        $assessments = Assessment::where('is_active', true)
+            ->whereHas('scheduleAssignments', function ($query) use ($enrolledSchedules) {
+                $query->whereIn('schedule_id', $enrolledSchedules)
+                      ->where('is_active', true)
+                      ->where(function ($subQuery) {
+                          $now = now();
+                          $subQuery->where(function ($dateQuery) use ($now) {
+                              $dateQuery->whereNull('available_from')
+                                       ->orWhere('available_from', '<=', $now);
+                          })
+                          ->where(function ($dateQuery) use ($now) {
+                              $dateQuery->whereNull('available_until')
+                                       ->orWhere('available_until', '>=', $now);
+                          });
+                      });
+            })
             ->with(['course:courseid,coursename'])
             ->get()
             ->map(function ($assessment) use ($traineeId) {
