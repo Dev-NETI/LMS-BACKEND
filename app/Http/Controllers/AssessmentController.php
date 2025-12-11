@@ -151,18 +151,18 @@ class AssessmentController extends Controller
         $assessments = Assessment::where('is_active', true)
             ->whereHas('scheduleAssignments', function ($query) use ($enrolledSchedules) {
                 $query->whereIn('schedule_id', $enrolledSchedules)
-                      ->where('is_active', true)
-                      ->where(function ($subQuery) {
-                          $now = now();
-                          $subQuery->where(function ($dateQuery) use ($now) {
-                              $dateQuery->whereNull('available_from')
-                                       ->orWhere('available_from', '<=', $now);
-                          })
-                          ->where(function ($dateQuery) use ($now) {
-                              $dateQuery->whereNull('available_until')
-                                       ->orWhere('available_until', '>=', $now);
-                          });
-                      });
+                    ->where('is_active', true)
+                    ->where(function ($subQuery) {
+                        $now = now();
+                        $subQuery->where(function ($dateQuery) use ($now) {
+                            $dateQuery->whereNull('available_from')
+                                ->orWhere('available_from', '<=', $now);
+                        })
+                            ->where(function ($dateQuery) use ($now) {
+                                $dateQuery->whereNull('available_until')
+                                    ->orWhere('available_until', '>=', $now);
+                            });
+                    });
             })
             ->with(['course:courseid,coursename'])
             ->get()
@@ -182,7 +182,7 @@ class AssessmentController extends Controller
                     'total_points' => $assessment->total_points,
                     'course' => [
                         'id' => $assessment->course->courseid,
-                        'name' => $assessment->course->fullname
+                        'name' => $assessment->course->coursename
                     ],
                     'attempts_count' => $attempts->count(),
                     'can_attempt' => $canAttempt,
@@ -196,6 +196,75 @@ class AssessmentController extends Controller
         return response()->json([
             'success' => true,
             'data' => $assessments
+        ]);
+    }
+
+    /**
+     * Get assessment details for trainee (without starting an attempt)
+     */
+    public function getAssessment($assessmentId)
+    {
+        $traineeId = Auth::id();
+
+        // Check if assessment exists and trainee is enrolled
+        $assessment = Assessment::with(['course:courseid,coursename,coursecode'])->findOrFail($assessmentId);
+
+        // Check if trainee is enrolled in the course
+        $enrollment = Enrolled::where('traineeid', $traineeId)
+            ->where('courseid', $assessment->course_id)
+            ->where('pendingid', 0)
+            ->exists();
+
+        if (!$enrollment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not enrolled in this course'
+            ], 403);
+        }
+
+        // Get trainee's attempts for this assessment
+        $attempts = $assessment->getTraineeAttempts($traineeId);
+        $activeAttempt = $assessment->getActiveAttempt($traineeId);
+        $canAttempt = $assessment->canAttempt($traineeId);
+
+        $assessmentData = [
+            'id' => $assessment->id,
+            'title' => $assessment->title,
+            'description' => $assessment->description,
+            'instructions' => $assessment->instructions,
+            'time_limit' => $assessment->time_limit,
+            'max_attempts' => $assessment->max_attempts,
+            'passing_score' => $assessment->passing_score,
+            'questions_count' => $assessment->questions_count,
+            'total_points' => $assessment->total_points,
+            'show_results_immediately' => $assessment->show_results_immediately,
+            'is_active' => $assessment->is_active,
+            'course' => [
+                'id' => $assessment->course->courseid,
+                'coursename' => $assessment->course->coursename,
+            ]
+        ];
+
+        return response()->json([
+            'success' => true,
+            'data' => $assessmentData,
+            'attempts' => $attempts->map(function ($attempt) {
+                return [
+                    'id' => $attempt->id,
+                    'attempt_number' => $attempt->attempt_number,
+                    'percentage' => $attempt->percentage,
+                    'is_passed' => $attempt->is_passed,
+                    'status' => $attempt->status,
+                    'submitted_at' => $attempt->submitted_at,
+                    'started_at' => $attempt->started_at
+                ];
+            }),
+            'can_attempt' => $canAttempt,
+            'attempts_remaining' => max(0, $assessment->max_attempts - $attempts->count()),
+            'has_active_attempt' => !is_null($activeAttempt),
+            'active_attempt_id' => $activeAttempt?->id,
+            'best_score' => $attempts->max('percentage'),
+            'last_attempt' => $attempts->first()?->only(['id', 'percentage', 'is_passed', 'submitted_at'])
         ]);
     }
 
@@ -251,13 +320,50 @@ class AssessmentController extends Controller
             'status' => 'in_progress'
         ]);
 
+        // Get assessment questions for the attempt
+        $assessment = Assessment::with([
+            'assessmentQuestions.question.options' => function ($query) {
+                $query->select('id', 'question_id', 'text', 'order');
+            }
+        ])->findOrFail($assessmentId);
+
+        $questions = $assessment->getQuestionsForAttempt()->map(function ($assessmentQuestion) use ($attempt) {
+            $question = $assessmentQuestion->question;
+            $savedAnswer = $attempt->getAnswerForQuestion($question->id);
+
+            return [
+                'id' => $question->id,
+                'question_text' => $question->question_text,
+                'question_type' => $question->question_type,
+                'points' => $question->points,
+                'options' => $question->options,
+                'saved_answer' => $savedAnswer?->answer_data
+            ];
+        });
+
         return response()->json([
             'success' => true,
-            'data' => [
-                'attempt_id' => $attempt->id,
+            'assessment' => [
+                'id' => $assessment->id,
+                'title' => $assessment->title,
+                'description' => $assessment->description,
+                'instructions' => $assessment->instructions,
+                'time_limit' => $assessment->time_limit,
+                'max_attempts' => $assessment->max_attempts,
+                'passing_score' => $assessment->passing_score,
+                'questions_count' => $assessment->questions_count,
+                'show_results_immediately' => $assessment->show_results_immediately
+            ],
+            'attempt' => [
+                'id' => $attempt->id,
+                'attempt_number' => $attempt->attempt_number,
                 'started_at' => $attempt->started_at,
-                'time_limit' => $assessment->time_limit
-            ]
+                'status' => $attempt->status,
+                'time_remaining' => $attempt->getRemainingTime(),
+                'answers' => [] // No answers yet for a new attempt
+            ],
+            'questions' => $questions,
+            'time_limit' => $assessment->time_limit
         ]);
     }
 
@@ -389,7 +495,7 @@ class AssessmentController extends Controller
         try {
             // Parse event type from activity
             $eventType = $this->parseEventTypeFromActivity($request->activity);
-            
+
             // Create security log entry in database
             SecurityLog::logEvent(
                 $traineeId,
@@ -426,7 +532,7 @@ class AssessmentController extends Controller
     private function parseEventTypeFromActivity($activity)
     {
         $activity = strtolower($activity);
-        
+
         if (strpos($activity, 'tab_switch') !== false || strpos($activity, 'tab switch') !== false) {
             return SecurityLog::EVENT_TYPES['TAB_SWITCH'];
         } elseif (strpos($activity, 'right_click_blocked') !== false || strpos($activity, 'right click blocked') !== false) {
@@ -575,30 +681,30 @@ class AssessmentController extends Controller
         $severity = $request->get('severity');
         $traineeId = $request->get('trainee_id');
         $assessmentId = $request->get('assessment_id');
-        
+
         $query = SecurityLog::with(['trainee:id,firstname,lastname', 'assessment:id,title'])
-                            ->orderBy('event_timestamp', 'desc');
-        
+            ->orderBy('event_timestamp', 'desc');
+
         // Apply filters
         if ($eventType) {
             $query->where('event_type', $eventType);
         }
-        
+
         if ($severity) {
             $query->where('severity', $severity);
         }
-        
+
         if ($traineeId) {
             $query->where('trainee_id', $traineeId);
         }
-        
+
         if ($assessmentId) {
             $query->where('assessment_id', $assessmentId);
         }
-        
+
         // Paginate results
         $logs = $query->paginate($perPage, ['*'], 'page', $page);
-        
+
         return response()->json([
             'success' => true,
             'data' => $logs->items(),
@@ -617,9 +723,9 @@ class AssessmentController extends Controller
     public function getAssessmentSecurityLogs($assessmentId)
     {
         $logs = SecurityLog::with(['trainee:id,firstname,lastname', 'assessment:id,title'])
-                           ->where('assessment_id', $assessmentId)
-                           ->orderBy('event_timestamp', 'desc')
-                           ->get();
+            ->where('assessment_id', $assessmentId)
+            ->orderBy('event_timestamp', 'desc')
+            ->get();
 
         return response()->json([
             'success' => true,
@@ -633,9 +739,9 @@ class AssessmentController extends Controller
     public function getTraineeSecurityLogs($traineeId)
     {
         $logs = SecurityLog::with(['trainee:id,firstname,lastname', 'assessment:id,title'])
-                           ->where('trainee_id', $traineeId)
-                           ->orderBy('event_timestamp', 'desc')
-                           ->get();
+            ->where('trainee_id', $traineeId)
+            ->orderBy('event_timestamp', 'desc')
+            ->get();
 
         return response()->json([
             'success' => true,

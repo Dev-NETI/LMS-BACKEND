@@ -63,6 +63,7 @@ Route::prefix('trainee')->group(function () {
         Route::get('/assessments/stats', [AssessmentController::class, 'getAssessmentStats']);
         Route::get('/schedules/{scheduleId}/assessments', [AssessmentController::class, 'getScheduleAssessments']);
         Route::get('/assessments', [AssessmentController::class, 'getTraineeAssessments']);
+        Route::get('/assessments/{assessmentId}', [AssessmentController::class, 'getAssessment']);
         Route::post('/assessments/{assessmentId}/start', [AssessmentController::class, 'startAttempt']);
         Route::get('/assessments/{assessmentId}/questions', [AssessmentController::class, 'getAssessmentQuestions']);
         Route::post('/assessments/{assessmentId}/questions/{questionId}/answer', [AssessmentController::class, 'saveAnswer']);
