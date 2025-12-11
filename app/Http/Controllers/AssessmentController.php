@@ -113,7 +113,7 @@ class AssessmentController extends Controller
                     'total_points' => $assessment->total_points,
                     'course' => [
                         'id' => $assessment->course->courseid,
-                        'name' => $assessment->course->coursename
+                        'coursename' => $assessment->course->coursename
                     ],
                     'attempts_count' => $attempts->count(),
                     'can_attempt' => $canAttempt,
@@ -182,7 +182,7 @@ class AssessmentController extends Controller
                     'total_points' => $assessment->total_points,
                     'course' => [
                         'id' => $assessment->course->courseid,
-                        'name' => $assessment->course->coursename
+                        'coursename' => $assessment->course->coursename
                     ],
                     'attempts_count' => $attempts->count(),
                     'can_attempt' => $canAttempt,
