@@ -9,71 +9,9 @@ use App\Models\Enrolled;
 use App\Models\SecurityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 
 class AssessmentController extends Controller
 {
-    /**
-     * Get assessment statistics for trainee
-     */
-    public function getAssessmentStats()
-    {
-        $traineeId = Auth::id();
-
-        // Get enrolled courses
-        $enrolledCourses = Enrolled::where('traineeid', $traineeId)->pluck('courseid');
-
-        if ($enrolledCourses->isEmpty()) {
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'total_assessments' => 0,
-                    'completed_assessments' => 0,
-                    'passed_assessments' => 0,
-                    'average_score' => 0,
-                    'pending_assessments' => 0
-                ]
-            ]);
-        }
-
-        // Get all assessments for enrolled courses
-        $totalAssessments = Assessment::whereIn('course_id', $enrolledCourses)
-            ->where('is_active', true)
-            ->count();
-
-        // Get completed attempts
-        $completedAttempts = AssessmentAttempt::whereHas('assessment', function ($query) use ($enrolledCourses) {
-            $query->whereIn('course_id', $enrolledCourses)->where('is_active', true);
-        })
-            ->where('trainee_id', $traineeId)
-            ->where('status', 'submitted')
-            ->get();
-
-        // Get unique completed assessments
-        $completedAssessments = $completedAttempts->unique('assessment_id')->count();
-
-        // Get passed assessments
-        $passedAssessments = $completedAttempts->where('is_passed', true)->unique('assessment_id')->count();
-
-        // Calculate average score
-        $averageScore = $completedAttempts->where('percentage', '>', 0)->avg('percentage') ?: 0;
-
-        // Pending assessments
-        $pendingAssessments = $totalAssessments - $completedAssessments;
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'total_assessments' => $totalAssessments,
-                'completed_assessments' => $completedAssessments,
-                'passed_assessments' => $passedAssessments,
-                'average_score' => round($averageScore, 2),
-                'pending_assessments' => max(0, $pendingAssessments)
-            ]
-        ]);
-    }
-
     /**
      * Get assessments for trainee based on schedule
      */
@@ -701,7 +639,7 @@ class AssessmentController extends Controller
 
         // Accept frontend time remaining value for syncing
         $frontendTimeRemaining = $request->input('time_remaining');
-        
+
         if ($frontendTimeRemaining !== null) {
             // Frontend is providing its current time remaining - use this for sync
             $timeRemaining = max(0, (int)$frontendTimeRemaining);
