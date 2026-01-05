@@ -111,7 +111,7 @@ class CourseContentController extends Controller
     private function storeFileContent(Request $request, array $validated): JsonResponse
     {
         $fileValidator = Validator::make($request->all(), [
-            'file' => 'required|file|max:100000',
+            'file' => 'required|file|max:500000',
             'file_type' => 'required|in:articulate_html,pdf'
         ]);
 

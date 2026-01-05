@@ -312,12 +312,14 @@ class AssessmentController extends Controller
             ->max('attempt_number') + 1;
 
         // Create new attempt
+        $timeLimit = $assessment->time_limit * 60; // Convert to seconds
         $attempt = AssessmentAttempt::create([
             'assessment_id' => $assessment->id,
             'trainee_id' => $traineeId,
             'attempt_number' => $attemptNumber,
             'started_at' => now(),
-            'status' => 'in_progress'
+            'status' => 'in_progress',
+            'time_remaining' => $timeLimit // Initialize with full time limit
         ]);
 
         // Get assessment questions for the attempt
@@ -360,7 +362,7 @@ class AssessmentController extends Controller
                 'started_at' => $attempt->started_at,
                 'status' => $attempt->status,
                 'time_remaining' => $attempt->getRemainingTime(),
-                'answers' => [] // No answers yet for a new attempt
+                'answers' => $attempt->answers // Include existing answers if any
             ],
             'questions' => $questions,
             'time_limit' => $assessment->time_limit
@@ -426,7 +428,8 @@ class AssessmentController extends Controller
                 'attempt' => [
                     'id' => $activeAttempt->id,
                     'started_at' => $activeAttempt->started_at,
-                    'time_remaining' => $activeAttempt->getRemainingTime()
+                    'time_remaining' => $activeAttempt->getRemainingTime(),
+                    'answers' => $activeAttempt->answers
                 ],
                 'questions' => $questions
             ]
@@ -666,6 +669,56 @@ class AssessmentController extends Controller
                 'status' => $attempt->status,
                 'time_remaining' => $attempt->getRemainingTime(),
                 'is_expired' => $attempt->status === 'expired'
+            ]
+        ]);
+    }
+
+    /**
+     * Update time remaining for an active assessment attempt
+     * This accepts the frontend timer value to sync with the backend
+     */
+    public function updateTimeRemaining(Request $request, $assessmentId)
+    {
+        $traineeId = Auth::id();
+
+        $assessment = Assessment::findOrFail($assessmentId);
+        $activeAttempt = $assessment->getActiveAttempt($traineeId);
+
+        if (!$activeAttempt) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No active attempt found'
+            ], 404);
+        }
+
+        if ($activeAttempt->isExpired()) {
+            $activeAttempt->markAsExpired();
+            return response()->json([
+                'success' => false,
+                'message' => 'Assessment attempt has expired'
+            ], 410);
+        }
+
+        // Accept frontend time remaining value for syncing
+        $frontendTimeRemaining = $request->input('time_remaining');
+        
+        if ($frontendTimeRemaining !== null) {
+            // Frontend is providing its current time remaining - use this for sync
+            $timeRemaining = max(0, (int)$frontendTimeRemaining);
+            $activeAttempt->update([
+                'time_remaining' => $timeRemaining
+            ]);
+        } else {
+            // No frontend time provided - update using backend calculation
+            $activeAttempt->updateTimeRemaining();
+            $timeRemaining = $activeAttempt->getRemainingTime();
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'time_remaining' => $timeRemaining,
+                'status' => $activeAttempt->status
             ]
         ]);
     }
