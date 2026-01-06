@@ -70,6 +70,7 @@ class CourseController extends Controller
                 $potentialSearchColumns = [
                     'coursecode',
                     'coursename',
+                    'coursedescription',
                 ];
 
                 // Find which search columns actually exist
@@ -80,6 +81,11 @@ class CourseController extends Controller
                         foreach ($searchColumns as $column) {
                             $q->orWhere($column, 'LIKE', "%{$searchTerm}%");
                         }
+
+                        // Also search in coursetype relationship
+                        $q->orWhereHas('coursetype', function ($courseTypeQuery) use ($searchTerm) {
+                            $courseTypeQuery->where('coursetype', 'LIKE', "%{$searchTerm}%");
+                        });
                     });
                 }
             }
@@ -94,8 +100,9 @@ class CourseController extends Controller
 
             // Get paginated results
             $courses = $query->offset($offset)
+                ->with(['coursetype', 'modeofdelivery'])
                 ->limit($limit)
-                ->orderBy('courseid', 'desc')
+                ->orderBy('coursename', 'ASC')
                 ->get();
 
             // Build pagination metadata

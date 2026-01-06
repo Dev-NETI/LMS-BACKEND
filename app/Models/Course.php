@@ -24,4 +24,14 @@ class Course extends Model
     {
         return $this->hasMany(Schedule::class, 'courseid', 'courseid');
     }
+
+    public function coursetype()
+    {
+        return $this->belongsTo(CourseType::class, 'coursetypeid', 'coursetypeid');
+    }
+
+    public function modeofdelivery()
+    {
+        return $this->belongsTo(ModeOfDelivery::class, 'modeofdeliveryid');
+    }
 }
