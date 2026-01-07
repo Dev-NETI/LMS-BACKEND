@@ -56,6 +56,10 @@ return [
             'driver' => 'sanctum',
             'provider' => 'trainees',
         ],
+        'instructor-sanctum' => [
+            'driver' => 'sanctum',
+            'provider' => 'instructors',
+        ],
     ],
 
     /*
@@ -83,6 +87,10 @@ return [
         'trainees' => [
             'driver' => 'eloquent',
             'model' => App\Models\Trainee::class,
+        ],
+        'instructors' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\User::class,
         ],
 
         // 'users' => [

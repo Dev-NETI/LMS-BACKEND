@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\TraineeAuthController;
+use App\Http\Controllers\InstructorAuthController;
 use App\Http\Controllers\CourseController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\UserController;
@@ -72,6 +73,55 @@ Route::prefix('trainee')->group(function () {
         Route::post('/assessments/{assessmentId}/submit', [AssessmentController::class, 'submitAttempt']);
         Route::get('/assessment-attempts/{attemptId}/result', [AssessmentController::class, 'getResult']);
         Route::get('/assessment-attempts/{attemptId}/status', [AssessmentController::class, 'getAttemptStatus']);
+    });
+});
+
+Route::prefix('instructor')->group(function () {
+    Route::post('/login', [InstructorAuthController::class, 'login']);
+
+    Route::middleware('auth:instructor-sanctum')->group(function () {
+        Route::post('/logout', [InstructorAuthController::class, 'logout'])->name('instructor.logout');
+        Route::get('/me', [InstructorAuthController::class, 'me'])->name('instructor.me');
+        
+        // Instructor can view courses and schedules (read-only for now)
+        Route::get('/courses', [CourseController::class, 'index']);
+        Route::get('/courses/{id}', [CourseController::class, 'show']);
+        Route::get('/courses-schedule/{id}', [ScheduleController::class, 'getCourseScheduleByCourseId']);
+        Route::get('/courses/schedules/{id}', [ScheduleController::class, 'getCourseScheduleById']);
+
+        // Instructor can manage announcements for their courses
+        Route::apiResource('announcements', AnnouncementController::class);
+        Route::get('/schedules/{sched_id}/announcements', [AnnouncementController::class, 'getBySchedule']);
+        Route::patch('/announcements/{announcement}/toggle-active', [AnnouncementController::class, 'toggleActive']);
+
+        // Instructor can view and respond to announcement replies
+        Route::get('/announcements/{announcementId}/replies', [AnnouncementReplyController::class, 'index']);
+        Route::post('/announcements/{announcementId}/replies', [AnnouncementReplyController::class, 'store']);
+        Route::get('/replies/{reply}', [AnnouncementReplyController::class, 'show']);
+        Route::put('/replies/{reply}', [AnnouncementReplyController::class, 'update']);
+        Route::delete('/replies/{reply}', [AnnouncementReplyController::class, 'destroy']);
+
+        // Instructor can view course details
+        Route::get('/courses/{courseId}/details', [CourseDetailController::class, 'getByCourse']);
+
+        // Instructor can view training materials
+        Route::get('/courses/{courseId}/training-materials', [TrainingMaterialController::class, 'getByCourse']);
+        Route::get('/training-materials/{trainingMaterial}/download', [TrainingMaterialController::class, 'download'])->middleware('secure.file');
+        Route::get('/training-materials/{trainingMaterial}/view', [TrainingMaterialController::class, 'view'])->middleware('secure.file');
+
+        // Instructor can view course content
+        Route::get('/courses/{courseId}/content', [CourseContentController::class, 'getByCourse']);
+        Route::get('/course-content/{courseContent}/download', [CourseContentController::class, 'download'])->middleware('secure.file');
+        Route::get('/course-content/{courseContent}/view', [CourseContentController::class, 'view'])->middleware('secure.file');
+
+        // Instructor can view trainee progress
+        Route::get('/progress/report', [TraineeProgressController::class, 'getProgressReport']);
+        Route::get('/courses/{courseId}/progress/trainees', [TraineeProgressController::class, 'getTraineeProgressByCourse']);
+        Route::get('/schedules/{scheduleId}/progress', [TraineeProgressController::class, 'getTraineeProgressBySchedule']);
+
+        // Instructor can view assessments and results (read-only)
+        Route::get('/courses/{courseId}/assessments', [AdminAssessmentController::class, 'getAssessmentsByCourse']);
+        Route::get('/assessments/{id}/stats', [AdminAssessmentController::class, 'getAssessmentStats']);
     });
 });
 
