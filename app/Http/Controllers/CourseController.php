@@ -51,7 +51,7 @@ class CourseController extends Controller
             $limit = max(1, min(100, $limit)); // Max 100 items per page
 
             // Build query - start simple to avoid column name issues
-            $query = Course::query();
+            $query = Course::query()->whereIn('coursetypeid', [1, 2, 3, 4, 5, 7, 8, 12, 13]);
 
             // Get the actual table name and check available columns once
             $tableName = (new Course())->getTable();
