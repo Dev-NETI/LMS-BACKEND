@@ -58,7 +58,7 @@ class AssessmentController extends Controller
                     'has_active_attempt' => !is_null($activeAttempt),
                     'active_attempt_id' => $activeAttempt?->id,
                     'best_score' => $attempts->max('percentage'),
-                    'last_attempt' => $attempts->first()?->only(['id', 'percentage', 'is_passed', 'submitted_at'])
+                    'last_attempt' => $attempts->first()?->only(['id', 'percentage', 'is_passed', 'submitted_at', 'status'])
                 ];
             });
 
