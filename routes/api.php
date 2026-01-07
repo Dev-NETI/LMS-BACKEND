@@ -163,6 +163,7 @@ Route::prefix('admin')->group(function () {
 
         // User management
         Route::get('/all-users', [UserController::class, 'getAllUsers']);
+        Route::get('/all-instructors', [UserController::class, 'getAllInstructor']);
     });
 });
 
