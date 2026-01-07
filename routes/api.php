@@ -129,13 +129,13 @@ Route::prefix('admin')->group(function () {
         Route::post('/courses/{courseId}/assessments', [AdminAssessmentController::class, 'store']);
         Route::get('/assessments/{id}/stats', [AdminAssessmentController::class, 'getAssessmentStats']);
         Route::put('/assessments/{id}/questions', [AdminAssessmentController::class, 'updateQuestions']);
-        
+
         // Schedule assignment routes
         Route::get('/courses/{courseId}/schedules', [AdminAssessmentController::class, 'getCourseSchedules']);
         Route::post('/assessments/{assessmentId}/assign-schedules', [AdminAssessmentController::class, 'assignToSchedules']);
         Route::delete('/assessments/{assessmentId}/schedules/{scheduleId}', [AdminAssessmentController::class, 'removeFromSchedule']);
         Route::put('/assessments/{assessmentId}/schedules/{scheduleId}', [AdminAssessmentController::class, 'updateScheduleAssignment']);
-        
+
         Route::apiResource('assessments', AdminAssessmentController::class)->except(['index', 'store']);
         Route::get('/course-content/{courseContent}/download', [CourseContentController::class, 'download'])->middleware('secure.file');
         Route::get('/course-content/{courseContent}/view', [CourseContentController::class, 'view'])->middleware('secure.file');
@@ -155,11 +155,14 @@ Route::prefix('admin')->group(function () {
 
         // Notification routes for admin
         Route::post('/notifications/announcement', [NotificationController::class, 'createAnnouncementNotification']);
-        
+
         // Security monitoring routes for admin
         Route::get('/security/logs', [AssessmentController::class, 'getSecurityLogs']);
         Route::get('/assessments/{assessmentId}/security/logs', [AssessmentController::class, 'getAssessmentSecurityLogs']);
         Route::get('/trainees/{traineeId}/security/logs', [AssessmentController::class, 'getTraineeSecurityLogs']);
+
+        // User management
+        Route::get('/all-users', [UserController::class, 'getAllUsers']);
     });
 });
 
