@@ -17,6 +17,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\AssessmentController;
 use App\Http\Controllers\AdminAssessmentController;
+use App\Http\Controllers\AssessmentAttemptController;
 
 // SPA Authentication (session-based) - for frontend
 Route::prefix('trainee')->group(function () {
@@ -123,6 +124,11 @@ Route::prefix('instructor')->group(function () {
         // Instructor can view assessments and results (read-only)
         Route::get('/courses/{courseId}/assessments', [AdminAssessmentController::class, 'getAssessmentsByCourse']);
         Route::get('/assessments/{id}/stats', [AdminAssessmentController::class, 'getAssessmentStats']);
+
+        // Assessment results for instructors
+        Route::get('/schedules/{scheduleId}/assessment-results', [AssessmentAttemptController::class, 'getScheduleAssessmentResults']);
+        Route::get('/schedules/{scheduleId}/trainees/{traineeId}/assessments/{assessmentId}/attempts', [AssessmentAttemptController::class, 'getTraineeAssessmentAttempts']);
+        Route::get('/attempts/{attemptId}/details', [AssessmentAttemptController::class, 'getAttemptDetails']);
     });
 });
 
