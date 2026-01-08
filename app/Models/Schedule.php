@@ -30,7 +30,7 @@ class Schedule extends Model
     public function activeEnrollments()
     {
         return $this->hasMany(Enrolled::class, 'scheduleid', 'scheduleid')
-            ->where('pendingid', 0);
+            ->where('pendingid', 0)->where('deletedid', 0);
     }
 
     public function getEnrolledCountAttribute()

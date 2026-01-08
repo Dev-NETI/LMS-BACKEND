@@ -88,6 +88,7 @@ Route::prefix('instructor')->group(function () {
         Route::get('/courses/{id}', [CourseController::class, 'show']);
         Route::get('/courses-schedule/{id}', [ScheduleController::class, 'getCourseScheduleByCourseId']);
         Route::get('/courses/schedules/{id}', [ScheduleController::class, 'getCourseScheduleById']);
+        Route::get('/my-schedules', [ScheduleController::class, 'getCourseScheduleByInstructorId']);
 
         // Instructor can manage announcements for their courses
         Route::apiResource('announcements', AnnouncementController::class);
