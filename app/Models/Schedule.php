@@ -75,4 +75,29 @@ class Schedule extends Model
             ->published()
             ->orderBy('published_at', 'desc');
     }
+
+    public function instructor()
+    {
+        return $this->belongsTo(User::class, 'instructorid', 'user_id');
+    }
+
+    public function alt_instructor()
+    {
+        return $this->belongsTo(User::class, 'alt_instructorid', 'user_id');
+    }
+
+    public function assessor()
+    {
+        return $this->belongsTo(User::class, 'assessorid', 'user_id');
+    }
+
+    public function alt_assessor()
+    {
+        return $this->belongsTo(User::class, 'alt_assessorid', 'user_id');
+    }
+
+    public function seat_instructor()
+    {
+        return $this->belongsTo(User::class, 'seatins_id', 'user_id');
+    }
 }

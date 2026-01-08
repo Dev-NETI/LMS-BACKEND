@@ -115,6 +115,11 @@ class ScheduleController extends Controller
                     'course' => $schedule->course,
                     'total_enrolled' => $schedule->countEnrolledStudents(),
                     'active_enrolled' => $schedule->countActiveEnrolledStudents(),
+                    'instructor' => ($schedule->instructor->user_id == 93) ? 'N/A' :  $schedule->instructor->fullname,
+                    'alternative_instructor' => ($schedule->alt_instructor->user_id == 93) ? 'N/A' :  $schedule->alt_instructor->fullname,
+                    'assessor' => ($schedule->assessor->user_id == 93) ? 'N/A' : $schedule->assessor->fullname,
+                    'alternative_assessor' => ($schedule->alt_assessor->user_id == 93) ? 'N/A' : $schedule->alt_assessor->fullname,
+                    'seat_instructor' => ($schedule->seat_instructor->user_id == 93) ? 'N/A' : $schedule->seat_instructor->fullname,
                     'enrolled_students' => $schedule->enrollments->map(function ($enrollment) {
                         return [
                             'enrollment_id' => $enrollment->enroledid,
