@@ -23,7 +23,7 @@ class AnnouncementReplyController extends Controller
             ->get()
             ->each(function ($reply) {
                 // Load only the correct relationship based on user_type
-                if ($reply->user_type === 'admin') {
+                if ($reply->user_type === 'admin' || $reply->user_type === 'instructor') {
                     $reply->load('user');
                 } else {
                     $reply->load('traineeUser');
@@ -63,7 +63,7 @@ class AnnouncementReplyController extends Controller
         ]);
 
         // Load the correct relationship based on user_type
-        if ($reply->user_type === 'admin') {
+        if ($reply->user_type === 'admin' || $reply->user_type === 'instructor') {
             $reply->load('user');
         } else {
             $reply->load('traineeUser');
@@ -92,9 +92,9 @@ class AnnouncementReplyController extends Controller
         ]);
 
         $reply->update($validated);
-        
+
         // Load the correct relationship based on user_type
-        if ($reply->user_type === 'admin') {
+        if ($reply->user_type === 'admin' || $reply->user_type === 'instructor') {
             $reply->load('user');
         } else {
             $reply->load('traineeUser');
