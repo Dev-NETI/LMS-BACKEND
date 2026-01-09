@@ -18,6 +18,7 @@ use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\AssessmentController;
 use App\Http\Controllers\AdminAssessmentController;
 use App\Http\Controllers\AssessmentAttemptController;
+use App\Http\Controllers\TutorialController;
 
 // SPA Authentication (session-based) - for frontend
 Route::prefix('trainee')->group(function () {
@@ -83,7 +84,7 @@ Route::prefix('instructor')->group(function () {
     Route::middleware('auth:instructor-sanctum')->group(function () {
         Route::post('/logout', [InstructorAuthController::class, 'logout'])->name('instructor.logout');
         Route::get('/me', [InstructorAuthController::class, 'me'])->name('instructor.me');
-        
+
         // Instructor can view courses and schedules (read-only for now)
         Route::get('/courses', [CourseController::class, 'index']);
         Route::get('/courses/{id}', [CourseController::class, 'show']);
@@ -226,6 +227,12 @@ Route::prefix('admin')->group(function () {
         // User management
         Route::get('/all-users', [UserController::class, 'getAllUsers']);
         Route::get('/all-instructors', [UserController::class, 'getAllInstructor']);
+
+        // Tutorial Management routes
+        Route::get('/tutorials/stats', [TutorialController::class, 'getStats']);
+        Route::post('/tutorials/bulk-delete', [TutorialController::class, 'bulkDelete']);
+        Route::apiResource('tutorials', TutorialController::class);
+        Route::get('/tutorials/{tutorial}/video', [TutorialController::class, 'viewVideo'])->middleware('secure.file');
     });
 });
 
