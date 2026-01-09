@@ -166,6 +166,11 @@ Route::prefix('admin')->group(function () {
         Route::get('/training-materials/{trainingMaterial}/download', [TrainingMaterialController::class, 'download'])->middleware('secure.file');
         Route::get('/training-materials/{trainingMaterial}/view', [TrainingMaterialController::class, 'view'])->middleware('secure.file');
 
+        // Document Management routes
+        Route::get('/documents/all', [TrainingMaterialController::class, 'getAllDocuments']);
+        Route::post('/training-materials/bulk-delete', [TrainingMaterialController::class, 'bulkDelete']);
+        Route::post('/training-materials/bulk-update-status', [TrainingMaterialController::class, 'bulkUpdateStatus']);
+
         // Course Content routes (for self-pace learning)
         // Specific routes must come before the resource routes
         Route::put('/course-content/update-order', [CourseContentController::class, 'updateOrder']);

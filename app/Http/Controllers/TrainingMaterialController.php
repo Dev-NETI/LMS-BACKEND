@@ -247,4 +247,213 @@ class TrainingMaterialController extends Controller
             'Content-Length' => strlen($decryptedContent)
         ]);
     }
+
+    /**
+     * Get all training materials across all courses for document management
+     * Supports search, filtering, sorting, and pagination
+     */
+    public function getAllDocuments(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'search' => 'nullable|string|max:255',
+            'file_category_type' => 'nullable|in:handout,document,manual',
+            'course_id' => 'nullable|integer|exists:main_db.tblcourses,courseid',
+            'is_active' => 'nullable|boolean',
+            'sort_by' => 'nullable|in:created_at,title,file_size,views',
+            'sort_order' => 'nullable|in:asc,desc',
+            'page' => 'nullable|integer|min:1',
+            'per_page' => 'nullable|integer|min:1|max:100'
+        ]);
+
+        $query = TrainingMaterial::with(['uploadedBy', 'course']);
+
+        // Apply search filter
+        if (!empty($validated['search'])) {
+            $search = $validated['search'];
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhere('file_name', 'like', "%{$search}%")
+                    ->orWhereHas('course', function ($courseQuery) use ($search) {
+                        $courseQuery->where('coursetitle', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        // Apply category filter
+        if (!empty($validated['file_category_type'])) {
+            $query->byCategory($validated['file_category_type']);
+        }
+
+        // Apply course filter
+        if (!empty($validated['course_id'])) {
+            $query->where('course_id', $validated['course_id']);
+        }
+
+        // Apply active status filter
+        if (isset($validated['is_active'])) {
+            $query->where('is_active', $validated['is_active']);
+        }
+
+        // Apply sorting
+        $sortBy = $validated['sort_by'] ?? 'created_at';
+        $sortOrder = $validated['sort_order'] ?? 'desc';
+
+        // For views, we'll sort by id for now (you can add a views column later)
+        if ($sortBy === 'views') {
+            $sortBy = 'id';
+        }
+
+        $query->orderBy($sortBy, $sortOrder);
+
+        // Get stats before pagination
+        $stats = $this->calculateDocumentStats();
+
+        // Paginate results
+        $perPage = $validated['per_page'] ?? 12;
+        $materials = $query->paginate($perPage);
+
+        // Transform the data to include course information
+        $transformedData = $materials->map(function ($material) {
+            return [
+                'id' => $material->id,
+                'course_id' => $material->course_id,
+                'title' => $material->title,
+                'description' => $material->description,
+                'file_name' => $material->file_name,
+                'file_path' => $material->file_path,
+                'file_type' => $material->file_type,
+                'file_category_type' => $material->file_category_type,
+                'file_size' => $material->file_size,
+                'file_size_human' => $material->file_size_human,
+                'order' => $material->order,
+                'is_active' => $material->is_active,
+                'created_at' => $material->created_at,
+                'updated_at' => $material->updated_at,
+                'uploaded_by' => $material->uploadedBy ? [
+                    'id' => $material->uploadedBy->id,
+                    'name' => $material->uploadedBy->fullname,
+                    'email' => $material->uploadedBy->email,
+                ] : null,
+                'course_name' => $material->course ? $material->course->coursename : null,
+                'course_code' => $material->course ? $material->course->coursecode ?? null : null,
+                'views' => 0, // Placeholder - implement view tracking if needed
+                'downloads' => 0, // Placeholder - implement download tracking if needed
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $transformedData,
+            'stats' => $stats,
+            'pagination' => [
+                'current_page' => $materials->currentPage(),
+                'per_page' => $materials->perPage(),
+                'total' => $materials->total(),
+                'total_pages' => $materials->lastPage(),
+            ]
+        ]);
+    }
+
+    /**
+     * Calculate statistics for document management dashboard
+     */
+    private function calculateDocumentStats(): array
+    {
+        $totalDocuments = TrainingMaterial::count();
+        $totalHandouts = TrainingMaterial::byCategory('handout')->count();
+        $totalManuals = TrainingMaterial::byCategory('manual')->count();
+        $totalSize = TrainingMaterial::sum('file_size');
+
+        // Calculate human-readable total size
+        $bytes = $totalSize;
+        $units = ['B', 'KB', 'MB', 'GB'];
+        $i = 0;
+        for (; $bytes > 1024 && $i < count($units) - 1; $i++) {
+            $bytes /= 1024;
+        }
+        $totalSizeHuman = round($bytes, 2) . ' ' . $units[$i];
+
+        // Recent uploads (last 7 days)
+        $recentUploads = TrainingMaterial::where('created_at', '>=', now()->subDays(7))->count();
+
+        // Active courses with materials
+        $activeCourses = TrainingMaterial::distinct('course_id')->count('course_id');
+
+        return [
+            'total_documents' => $totalDocuments,
+            'total_handouts' => $totalHandouts,
+            'total_manuals' => $totalManuals,
+            'total_size' => $totalSize,
+            'total_size_human' => $totalSizeHuman,
+            'recent_uploads' => $recentUploads,
+            'active_courses' => $activeCourses,
+        ];
+    }
+
+    /**
+     * Bulk delete training materials
+     */
+    public function bulkDelete(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'required|integer|exists:training_materials,id'
+        ]);
+
+        $materials = TrainingMaterial::whereIn('id', $validated['ids'])->get();
+
+        $deletedCount = 0;
+        foreach ($materials as $material) {
+            // Delete the encrypted file from secure storage
+            if ($this->secureFileService->secureFileExists($material->file_path)) {
+                $this->secureFileService->deleteSecureFile($material->file_path);
+            }
+
+            $material->delete();
+            $deletedCount++;
+        }
+
+        Log::info('Bulk delete training materials', [
+            'user_id' => Auth::id(),
+            'deleted_count' => $deletedCount,
+            'material_ids' => $validated['ids']
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => "{$deletedCount} document(s) deleted successfully",
+            'deleted_count' => $deletedCount
+        ]);
+    }
+
+    /**
+     * Bulk update training materials status (activate/deactivate)
+     */
+    public function bulkUpdateStatus(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'required|integer|exists:training_materials,id',
+            'is_active' => 'required|boolean'
+        ]);
+
+        $updatedCount = TrainingMaterial::whereIn('id', $validated['ids'])
+            ->update(['is_active' => $validated['is_active']]);
+
+        $status = $validated['is_active'] ? 'activated' : 'deactivated';
+
+        Log::info('Bulk update training materials status', [
+            'user_id' => Auth::id(),
+            'updated_count' => $updatedCount,
+            'material_ids' => $validated['ids'],
+            'status' => $status
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => "{$updatedCount} document(s) {$status} successfully",
+            'updated_count' => $updatedCount
+        ]);
+    }
 }
