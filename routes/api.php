@@ -75,6 +75,10 @@ Route::prefix('trainee')->group(function () {
         Route::post('/assessments/{assessmentId}/submit', [AssessmentController::class, 'submitAttempt']);
         Route::get('/assessment-attempts/{attemptId}/result', [AssessmentController::class, 'getResult']);
         Route::get('/assessment-attempts/{attemptId}/status', [AssessmentController::class, 'getAttemptStatus']);
+
+        Route::get('/tutorials/stats', [TutorialController::class, 'getStats']);
+        Route::apiResource('tutorials', TutorialController::class);
+        Route::get('/tutorials/{tutorial}/video', [TutorialController::class, 'viewVideo'])->middleware('secure.file');
     });
 });
 
@@ -130,6 +134,10 @@ Route::prefix('instructor')->group(function () {
         Route::get('/schedules/{scheduleId}/assessment-results', [AssessmentAttemptController::class, 'getScheduleAssessmentResults']);
         Route::get('/schedules/{scheduleId}/trainees/{traineeId}/assessments/{assessmentId}/attempts', [AssessmentAttemptController::class, 'getTraineeAssessmentAttempts']);
         Route::get('/attempts/{attemptId}/details', [AssessmentAttemptController::class, 'getAttemptDetails']);
+
+        Route::get('/tutorials/stats', [TutorialController::class, 'getStats']);
+        Route::apiResource('tutorials', TutorialController::class);
+        Route::get('/tutorials/{tutorial}/video', [TutorialController::class, 'viewVideo'])->middleware('secure.file');
     });
 });
 
