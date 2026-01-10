@@ -236,6 +236,7 @@ Route::prefix('admin')->group(function () {
         Route::get('/all-users', [UserController::class, 'getAllUsers']);
         Route::get('/all-instructors', [UserController::class, 'getAllInstructor']);
         Route::get('/all-trainees', [UserController::class, 'getAllTrainees']);
+        Route::get('/trainees/{traineeId}/profile', [UserController::class, 'getTraineeProfile']);
 
         // Tutorial Management routes
         Route::get('/tutorials/stats', [TutorialController::class, 'getStats']);

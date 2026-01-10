@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Trainee;
 use App\Models\User;
+use App\Models\Enrolled;
+use App\Models\AssessmentAttempt;
+use App\Models\SecurityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -295,5 +298,124 @@ class UserController extends Controller
             ],
             'message' => 'Trainees retrieved successfully'
         ], 200);
+    }
+
+    public function getTraineeProfile($traineeId)
+    {
+        try {
+            // Get trainee basic info
+            $trainee = Trainee::where('traineeid', $traineeId)
+                ->where('is_active', 1)
+                ->first();
+
+            if (!$trainee) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Trainee not found or inactive'
+                ], 404);
+            }
+
+            // Get enrolled courses with schedule and course details
+            $enrolledCourses = Enrolled::where('traineeid', $traineeId)
+                ->with(['course', 'schedule'])
+                ->get()
+                ->map(function ($enrollment) {
+                    return [
+                        'enrollment_id' => $enrollment->enroledid,
+                        'course_id' => $enrollment->courseid,
+                        'course_name' => $enrollment->course->coursename ?? 'N/A',
+                        'course_code' => $enrollment->course->coursecode ?? 'N/A',
+                        'date_registered' => $enrollment->dateregistered,
+                        'date_completed' => $enrollment->datecompleted,
+                        'status' => $enrollment->status,
+                        'schedule_id' => $enrollment->scheduleid,
+                        'schedule_data' => $enrollment->schedule,
+
+                    ];
+                });
+
+            // Get assessment attempts with assessment details
+            $assessmentAttempts = AssessmentAttempt::where('trainee_id', $traineeId)
+                ->with(['assessment'])
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function ($attempt) {
+                    return [
+                        'attempt_id' => $attempt->id,
+                        'assessment_id' => $attempt->assessment_id,
+                        'assessment_title' => $attempt->assessment->title ?? 'N/A',
+                        'attempt_number' => $attempt->attempt_number,
+                        'started_at' => $attempt->started_at,
+                        'submitted_at' => $attempt->submitted_at,
+                        'time_remaining' => $attempt->time_remaining,
+                        'score' => $attempt->score,
+                        'percentage' => $attempt->percentage,
+                        'status' => $attempt->status,
+                        'is_passed' => $attempt->is_passed,
+                        'created_at' => $attempt->created_at,
+                    ];
+                });
+
+            // Get security logs with assessment details
+            $securityLogs = SecurityLog::where('trainee_id', $traineeId)
+                ->with(['assessment', 'attempt'])
+                ->orderBy('event_timestamp', 'desc')
+                ->limit(100) // Limit to recent 100 logs
+                ->get()
+                ->map(function ($log) {
+                    return [
+                        'log_id' => $log->id,
+                        'assessment_id' => $log->assessment_id,
+                        'assessment_title' => $log->assessment->title ?? 'N/A',
+                        'attempt_id' => $log->attempt_id,
+                        'activity' => $log->activity,
+                        'event_type' => $log->event_type,
+                        'severity' => $log->severity,
+                        'ip_address' => $log->ip_address,
+                        'user_agent' => $log->user_agent,
+                        'additional_data' => $log->additional_data,
+                        'event_timestamp' => $log->event_timestamp,
+                        'created_at' => $log->created_at,
+                    ];
+                });
+
+            // Calculate statistics
+            $stats = [
+                'total_courses' => $enrolledCourses->count(),
+                'completed_courses' => $enrolledCourses->where('status', 'completed')->count(),
+                'total_assessments' => $assessmentAttempts->count(),
+                'passed_assessments' => $assessmentAttempts->where('is_passed', true)->count(),
+                'failed_assessments' => $assessmentAttempts->where('is_passed', false)->count(),
+                'security_violations' => $securityLogs->whereIn('severity', ['high', 'critical'])->count(),
+                'average_score' => $assessmentAttempts->where('status', 'submitted')->avg('percentage'),
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'trainee' => [
+                        'trainee_id' => $trainee->traineeid,
+                        'f_name' => $trainee->f_name,
+                        'm_name' => $trainee->m_name,
+                        'l_name' => $trainee->l_name,
+                        'email' => $trainee->email,
+                        'username' => $trainee->username,
+                        'is_active' => (bool) $trainee->is_active,
+                        'created_at' => $trainee->created_at,
+                        'updated_at' => $trainee->updated_at,
+                    ],
+                    'enrolled_courses' => $enrolledCourses,
+                    'assessment_attempts' => $assessmentAttempts,
+                    'security_logs' => $securityLogs,
+                    'statistics' => $stats,
+                ],
+                'message' => 'Trainee profile retrieved successfully'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve trainee profile: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }
