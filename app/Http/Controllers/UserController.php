@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Trainee;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -220,6 +221,79 @@ class UserController extends Controller
                 'hasPreviousPage' => $hasPreviousPage,
             ],
             'message' => 'Users retrieved successfully'
+        ], 200);
+    }
+
+    public function getAllTrainees(Request $request)
+    {
+        // Get query parameters with defaults
+        $page = $request->get('page', 1);
+        $limit = $request->get('limit', 10);
+        $search = $request->get('search');
+        $sortBy = $request->get('sortBy', 'f_name');
+        $sortOrder = $request->get('sortOrder', 'asc');
+
+        // Start building the query - only get active trainees (is_active = 1)
+        $query = Trainee::where('is_active', 1);
+
+        // Apply search filter
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('f_name', 'LIKE', "%{$search}%")
+                    ->orWhere('m_name', 'LIKE', "%{$search}%")
+                    ->orWhere('l_name', 'LIKE', "%{$search}%")
+                    ->orWhere('email', 'LIKE', "%{$search}%")
+                    ->orWhere('username', 'LIKE', "%{$search}%")
+                    ->orWhereRaw("CONCAT(f_name, ' ', IFNULL(m_name, ''), ' ', l_name) LIKE ?", ["%{$search}%"]);
+            });
+        }
+
+        // Apply sorting
+        $allowedSortColumns = ['f_name', 'l_name', 'email', 'username', 'created_at'];
+        if (in_array($sortBy, $allowedSortColumns)) {
+            $query->orderBy($sortBy, $sortOrder === 'desc' ? 'desc' : 'asc');
+        }
+
+        // Get total count before pagination
+        $totalItems = $query->count();
+
+        // Apply pagination
+        $trainees = $query->skip(($page - 1) * $limit)
+            ->take($limit)
+            ->get();
+
+        // Calculate pagination metadata
+        $totalPages = ceil($totalItems / $limit);
+        $hasNextPage = $page < $totalPages;
+        $hasPreviousPage = $page > 1;
+
+        // Transform trainees data to match frontend expectations
+        $transformedTrainees = $trainees->map(function ($trainee) {
+            return [
+                'trainee_id' => $trainee->traineeid,
+                'f_name' => $trainee->f_name,
+                'm_name' => $trainee->m_name,
+                'l_name' => $trainee->l_name,
+                'email' => $trainee->email,
+                'username' => $trainee->username,
+                'is_active' => (bool) $trainee->is_active,
+                'created_at' => $trainee->created_at,
+                'updated_at' => $trainee->updated_at,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $transformedTrainees,
+            'pagination' => [
+                'currentPage' => (int) $page,
+                'totalPages' => $totalPages,
+                'totalItems' => $totalItems,
+                'itemsPerPage' => (int) $limit,
+                'hasNextPage' => $hasNextPage,
+                'hasPreviousPage' => $hasPreviousPage,
+            ],
+            'message' => 'Trainees retrieved successfully'
         ], 200);
     }
 }
